@@ -180,6 +180,8 @@ struct Options {
     bool quiet = false;
     bool cat = false, toPly = false;
     std::string imageFile;
+    int samples=0; // number of samples per generated image
+    int images=1; // number of generated image (at least one)
     // x0, x1, y0, y1
     Float cropWindow[2][2];
 };

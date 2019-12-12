@@ -45,6 +45,7 @@
 #include "filter.h"
 #include "stats.h"
 #include "parallel.h"
+#include <sys/stat.h>
 
 namespace pbrt {
 
@@ -69,6 +70,7 @@ class Film {
     void SetImage(const Spectrum *img) const;
     void AddSplat(const Point2f &p, Spectrum v);
     void WriteImage(Float splatScale = 1);
+    void WriteImageTemp(int nbSamples, int index, Float splatScale = 1);
     void Clear();
 
     // Film Public Data

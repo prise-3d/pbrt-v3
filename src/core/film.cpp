@@ -210,6 +210,66 @@ void Film::WriteImage(Float splatScale) {
     pbrt::WriteImage(filename, &rgb[0], croppedPixelBounds, fullResolution);
 }
 
+void Film::WriteImageTemp(int nbSamples, int index, Float splatScale) {
+    // Convert image to RGB and compute final pixel values
+    LOG(INFO) <<
+        "Converting image to RGB and computing final weighted pixel values";
+    std::unique_ptr<Float[]> rgb(new Float[3 * croppedPixelBounds.Area()]);
+    int offset = 0;
+    for (Point2i p : croppedPixelBounds) {
+        // Convert pixel XYZ color to RGB
+        Pixel &pixel = GetPixel(p);
+        XYZToRGB(pixel.xyz, &rgb[3 * offset]);
+
+        // Normalize pixel with weight sum
+        Float filterWeightSum = pixel.filterWeightSum;
+        if (filterWeightSum != 0) {
+            Float invWt = (Float)1 / filterWeightSum;
+            rgb[3 * offset] = std::max((Float)0, rgb[3 * offset] * invWt);
+            rgb[3 * offset + 1] =
+                std::max((Float)0, rgb[3 * offset + 1] * invWt);
+            rgb[3 * offset + 2] =
+                std::max((Float)0, rgb[3 * offset + 2] * invWt);
+        }
+
+        // Add splat value at pixel
+        Float splatRGB[3];
+        Float splatXYZ[3] = {pixel.splatXYZ[0], pixel.splatXYZ[1],
+                             pixel.splatXYZ[2]};
+        XYZToRGB(splatXYZ, splatRGB);
+        rgb[3 * offset] += splatScale * splatRGB[0];
+        rgb[3 * offset + 1] += splatScale * splatRGB[1];
+        rgb[3 * offset + 2] += splatScale * splatRGB[2];
+
+        // Scale pixel value by _scale_
+        rgb[3 * offset] *= scale;
+        rgb[3 * offset + 1] *= scale;
+        rgb[3 * offset + 2] *= scale;
+        ++offset;
+    }
+
+    // Write RGB image
+
+    // define delimiter to split image name
+    std::string delimiter = ".";
+    std::string output_folder = "temp";
+
+    // find prefix and postfix information from `filename`
+    std::string filename_prefix = filename.substr(0, filename.find(delimiter));
+    std::string filename_postfix = filename.substr(filename.find(delimiter), filename.length());
+
+    // build folder
+    std::string folder_image = std::string(output_folder + "/" + filename_prefix);
+    std::string temp_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(nbSamples) + "-" + std::to_string(index) + filename_postfix;
+    
+    // TODO : improve (recursively create folders)
+    mkdir(output_folder.c_str(), 0775);
+    mkdir(folder_image.c_str(), 0775);
+
+    pbrt::WriteImage(temp_filename, &rgb[0], croppedPixelBounds, fullResolution);
+
+}
+
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
     std::string filename;
     if (PbrtOptions.imageFile != "") {

@@ -130,6 +130,16 @@ int main(int argc, char *argv[]) {
         }
         else if (!strcmp(argv[i], "--logtostderr")) {
           FLAGS_logtostderr = true;
+        }
+        // additionnals arguments
+        else if (!strcmp(argv[i], "--images") || !strcmp(argv[i], "-images")) {
+             if (i + 1 == argc)
+                 usage("missing value after --images argument");
+            options.images = atoi(argv[++i]);
+        }else if (!strcmp(argv[i], "--samples") || !strcmp(argv[i], "-samples")) {
+             if (i + 1 == argc)
+                 usage("missing value after --samples argument");
+            options.samples = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-help") ||
                    !strcmp(argv[i], "-h")) {
             usage();
