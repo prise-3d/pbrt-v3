@@ -130,3 +130,15 @@ in the list of configuration variables; set them as desired before choosing
 
 With command-line cmake, their values can be specified when you cmake via
 `-DPBRT_FLOAT_AS_DOUBLE=1`, for example.
+
+
+### Updates
+
+Possibility to generate few images in one run with different random seed. 
+
+```sh
+cd build
+./pbrt --images 10 --samples 100 ../path/to/file.pbrt
+```
+
+Images are saved into `temp/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
