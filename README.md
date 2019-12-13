@@ -138,7 +138,13 @@ Possibility to generate few images in one run with different random seed.
 
 ```sh
 cd build
-./pbrt --images 10 --samples 100 ../path/to/file.pbrt
+./pbrt --images 10 --samples 100 --folder output ../path/to/file.pbrt
 ```
 
-Images are saved into `temp/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
+**Parameters:**
+- *--samples*: number of samples per pixel per image
+- *--images*: number of images with `n` samples expected as output
+- *--folder*: specific output folder (by default `temp`)
+- *--startindex*: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
+
+Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`

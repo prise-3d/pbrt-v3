@@ -136,11 +136,23 @@ int main(int argc, char *argv[]) {
              if (i + 1 == argc)
                  usage("missing value after --images argument");
             options.images = atoi(argv[++i]);
-        }else if (!strcmp(argv[i], "--samples") || !strcmp(argv[i], "-samples")) {
+        }
+        else if (!strcmp(argv[i], "--samples") || !strcmp(argv[i], "-samples")) {
              if (i + 1 == argc)
                  usage("missing value after --samples argument");
             options.samples = atoi(argv[++i]);
-        } else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-help") ||
+        }
+        else if (!strcmp(argv[i], "--startindex") || !strcmp(argv[i], "-startindex")) {
+             if (i + 1 == argc)
+                 usage("missing value after --startindex argument");
+            options.startindex = atoi(argv[++i]);
+        }
+        else if (!strcmp(argv[i], "--folder") || !strcmp(argv[i], "-folder")) {
+             if (i + 1 == argc)
+                 usage("missing value after --folder argument");
+            options.folder = argv[++i];
+        } 
+        else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-help") ||
                    !strcmp(argv[i], "-h")) {
             usage();
             return 0;
@@ -153,8 +165,13 @@ int main(int argc, char *argv[]) {
         if (sizeof(void *) == 4)
             printf("*** WARNING: This is a 32-bit build of pbrt. It will crash "
                    "if used to render highly complex scenes. ***\n");
-        printf("pbrt version 3 (built %s at %s) [Detected %d cores]\n",
-               __DATE__, __TIME__, NumSystemCores());
+
+        // specify max number of core used
+        if (options.nThreads == 0)
+            options.nThreads = NumSystemCores();
+
+        printf("pbrt version 3 (built %s at %s) [Detected %d cores, used %d]\n",
+               __DATE__, __TIME__, NumSystemCores(), options.nThreads);
 #ifndef NDEBUG
         LOG(INFO) << "Running debug build";
         printf("*** DEBUG BUILD ***\n");

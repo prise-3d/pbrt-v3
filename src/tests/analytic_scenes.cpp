@@ -92,7 +92,7 @@ std::vector<TestScene> GetScenes() {
         lights.push_back(
             std::make_shared<PointLight>(Transform(), nullptr, Spectrum(Pi)));
 
-        std::unique_ptr<Scene> scene(new Scene(bvh, lights, 10));
+        std::unique_ptr<Scene> scene(new Scene(bvh, lights));
 
         scenes.push_back({std::move(scene), "Sphere, 1 light, Kd = 0.5", 1.0});
     }
@@ -127,7 +127,7 @@ std::vector<TestScene> GetScenes() {
         lights.push_back(std::make_shared<PointLight>(Transform(), nullptr,
                                                       Spectrum(Pi / 4)));
 
-        std::unique_ptr<Scene> scene(new Scene(bvh, lights, 10));
+        std::unique_ptr<Scene> scene(new Scene(bvh, lights));
 
         scenes.push_back({std::move(scene), "Sphere, 1 light, Kd = 0.5", 1.0});
     }
@@ -159,7 +159,7 @@ std::vector<TestScene> GetScenes() {
             sphere, material, areaLight, mediumInterface));
         std::shared_ptr<BVHAccel> bvh = std::make_shared<BVHAccel>(prims);
 
-        std::unique_ptr<Scene> scene(new Scene(bvh, lights, 10));
+        std::unique_ptr<Scene> scene(new Scene(bvh, lights));
 
         scenes.push_back({std::move(scene), "Sphere, Kd = 0.5, Le = 0.5", 1.0});
     }
@@ -196,7 +196,7 @@ std::vector<TestScene> GetScenes() {
         lights.push_back(std::make_shared<PointLight>(Transform(), nullptr,
                                                       Spectrum(3. * Pi)));
 
-        std::unique_ptr<Scene> scene(new Scene(bvh, lights, 10));
+        std::unique_ptr<Scene> scene(new Scene(bvh, lights));
 
         scenes.push_back(
             {std::move(scene), "Sphere, 1 light, Kd = 0.25 Kr = 0.5", 1.0});
@@ -237,7 +237,7 @@ std::vector<TestScene> GetScenes() {
     std::vector<std::shared_ptr<Light>> lights;
     lights.push_back(areaLight);
 
-    std::unique_ptr<Scene> scene(new Scene(bvh, lights, 10));
+    std::unique_ptr<Scene> scene(new Scene(bvh, lights));
 
     scenes.push_back({std::move(scene),
             "Sphere, Kd = 0.25 Kr = 0.5, Le = 0.587", 1.0});

@@ -210,7 +210,7 @@ void Film::WriteImage(Float splatScale) {
     pbrt::WriteImage(filename, &rgb[0], croppedPixelBounds, fullResolution);
 }
 
-void Film::WriteImageTemp(int nbSamples, int index, Float splatScale) {
+void Film::WriteImageTemp(std::string folder, int nbSamples, int index, Float splatScale) {
     // Convert image to RGB and compute final pixel values
     LOG(INFO) <<
         "Converting image to RGB and computing final weighted pixel values";
@@ -252,8 +252,8 @@ void Film::WriteImageTemp(int nbSamples, int index, Float splatScale) {
 
     // define delimiter to split image name
     std::string delimiter = ".";
-    std::string output_folder = "temp";
-
+    std::string output_folder = folder;
+    
     // find prefix and postfix information from `filename`
     std::string filename_prefix = filename.substr(0, filename.find(delimiter));
     std::string filename_postfix = filename.substr(filename.find(delimiter), filename.length());

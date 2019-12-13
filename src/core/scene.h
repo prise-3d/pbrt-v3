@@ -51,8 +51,7 @@ class Scene {
   public:
     // Scene Public Methods
     Scene(std::shared_ptr<Primitive> aggregate,
-          const std::vector<std::shared_ptr<Light>> &lights,
-          int nbImages)
+          const std::vector<std::shared_ptr<Light>> &lights)
         : lights(lights), aggregate(aggregate) {
         // Scene Constructor Implementation
         worldBound = aggregate->WorldBound();
@@ -61,8 +60,6 @@ class Scene {
             if (light->flags & (int)LightFlags::Infinite)
                 infiniteLights.push_back(light);
         }
-
-        images=nbImages;
     }
     const Bounds3f &WorldBound() const { return worldBound; }
     bool Intersect(const Ray &ray, SurfaceInteraction *isect) const;
@@ -75,9 +72,6 @@ class Scene {
     // Store infinite light sources separately for cases where we only want
     // to loop over them.
     std::vector<std::shared_ptr<Light>> infiniteLights;
-
-    // number of images whished for the scene
-    int images;
     
   private:
     // Scene Private Data

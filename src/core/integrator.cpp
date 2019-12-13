@@ -233,8 +233,13 @@ void SamplerIntegrator::Render(const Scene &scene) {
     uint64_t seed=0;
     uint64_t numberOfSamples = PbrtOptions.samples; // get number of samples expected by the renderer by image
     
+    int startImagesIndex = 0 + PbrtOptions.startindex;
+    int maxNumberOfImages = PbrtOptions.images + PbrtOptions.startindex;
+
      // loop for n images, seed random generator
-    for(int i=0; i<scene.images; i++){
+    for(int i=startImagesIndex; i < maxNumberOfImages; i++){
+
+        std::cout << "Rendering " << (i + 1) << " of " << maxNumberOfImages << " images" << std::endl;
 
         // define new seed for each generated image with specific number of sample
         uint64_t randomseed;
@@ -257,7 +262,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
                 // Get sampler instance for tile
 
                 // use of random seed for each image generated
-                seed = tile.x + tile.y+randomseed; 
+                seed = tile.x + tile.y + randomseed; 
 
                 std::unique_ptr<Sampler> tileSampler = sampler->Clone(seed);
 
@@ -346,10 +351,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
             }, nTiles);
             reporter.Done();
         }
-        LOG(INFO) << "Rendering " << i << " of " << scene.images << " finished";
 
         // Save final image after rendering
-        camera->film->WriteImageTemp(numberOfSamples, i);
+        camera->film->WriteImageTemp(PbrtOptions.folder, numberOfSamples, i);
     }
 
     LOG(INFO) << "All rendering finished";

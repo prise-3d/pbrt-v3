@@ -70,7 +70,7 @@ class Film {
     void SetImage(const Spectrum *img) const;
     void AddSplat(const Point2f &p, Spectrum v);
     void WriteImage(Float splatScale = 1);
-    void WriteImageTemp(int nbSamples, int index, Float splatScale = 1);
+    void WriteImageTemp(std::string folder, int nbSamples, int index, Float splatScale = 1);
     void Clear();
 
     // Film Public Data
