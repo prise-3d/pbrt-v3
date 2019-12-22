@@ -37,6 +37,9 @@
 #include "fileutil.h"
 #include "spectrum.h"
 
+#include <fstream>
+#include <iostream>
+#include <bitset>
 #include <ImfRgba.h>
 #include <ImfRgbaFile.h>
 
@@ -53,6 +56,8 @@ static RGBSpectrum *ReadImageTGA(const std::string &name, int *w, int *h);
 static RGBSpectrum *ReadImagePNG(const std::string &name, int *w, int *h);
 static bool WriteImagePFM(const std::string &filename, const Float *rgb,
                           int xres, int yres);
+static bool WriteImageRAWLS(const std::string &filename, const Float *rgb,
+                          int xres, int yres, int nbChanels=3);
 static RGBSpectrum *ReadImagePFM(const std::string &filename, int *xres,
                                  int *yres);
 
@@ -81,7 +86,11 @@ std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
 void WriteImage(const std::string &name, const Float *rgb,
                 const Bounds2i &outputBounds, const Point2i &totalResolution) {
     Vector2i resolution = outputBounds.Diagonal();
-    if (HasExtension(name, ".exr")) {
+
+    if (HasExtension(name, ".rawls_20")){
+        WriteImageRAWLS(name, rgb, resolution.x, resolution.y);
+    }
+    else if (HasExtension(name, ".exr")) {
         WriteImageEXR(name, rgb, resolution.x, resolution.y, totalResolution.x,
                       totalResolution.y, outputBounds.pMin.x,
                       outputBounds.pMin.y);
@@ -479,6 +488,55 @@ fail:
     Error("Error writing PFM file \"%s\"", filename.c_str());
     fclose(fp);
     return false;
+}
+
+static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int width, int height, int nbChanels){
+    
+    // Part 1
+    // using information write image header
+
+    std::ofstream outputFile(filename, std::ios::out | std::ios::binary);
+
+    outputFile << "IHDR" << std::endl;
+    outputFile << ((sizeof(width) + sizeof(height) + sizeof(nbChanels)))  << std::endl;
+    outputFile.write((char *) &width, sizeof(width));
+    outputFile << " ";
+    outputFile.write((char *) &height, sizeof(height));
+    outputFile << " ";
+    outputFile.write((char *) &nbChanels, sizeof(nbChanels));
+    outputFile << std::endl;
+
+    //outputFile << w << " " << h << " " << n << std::endl;
+
+    // Part 2
+    // using data information write specific chunck
+    outputFile << "DATA" << std::endl;
+    outputFile << (sizeof(float) * nbChanels * width * height) << std::endl;
+
+    for (int x = 0; x < width; ++x) {
+        for (int y = 0; y < height; ++y) {
+            Float pixel[3];
+            pixel[0] = rgb[3 * (y * width + x) + 0];
+            pixel[1] = rgb[3 * (y * width + x) + 1];
+            pixel[2] = rgb[3 * (y * width + x) + 2];
+
+            std::cout << pixel[0] << " " << pixel[1] << " " << pixel[2] << std::endl;
+            
+            outputFile.write((char *) &pixel[0], sizeof(pixel[0]));
+            outputFile.write((char *) &pixel[1], sizeof(pixel[1]));
+            outputFile.write((char *) &pixel[2], sizeof(pixel[2]));
+            outputFile << std::endl;
+
+            //std::bitset<sizeof pixel[0]*8> r (*(long unsigned int*)(&pixel[0]));
+            //std::bitset<sizeof pixel[1]*8> g (*(long unsigned int*)(&pixel[1]));
+            //std::bitset<sizeof pixel[2]*8> b (*(long unsigned int*)(&pixel[2]));
+
+            //outputFile << r << " " << g << " " << b << std::endl;
+        }
+    }
+    outputFile.close();
+
+    return true;
 }
 
 }  // namespace pbrt
