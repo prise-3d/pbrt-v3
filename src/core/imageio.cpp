@@ -513,25 +513,20 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
     outputFile << "DATA" << std::endl;
     outputFile << (sizeof(float) * nbChanels * width * height) << std::endl;
 
-    for (int x = 0; x < width; ++x) {
-        for (int y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
             Float pixel[3];
-            pixel[0] = rgb[3 * (y * width + x) + 0];
-            pixel[1] = rgb[3 * (y * width + x) + 1];
-            pixel[2] = rgb[3 * (y * width + x) + 2];
-
-            std::cout << pixel[0] << " " << pixel[1] << " " << pixel[2] << std::endl;
+            
+            #define GAMMA_CONVERT(v) (float) Clamp(255.f * GammaCorrect(v) + 0.5f, 0.f, 255.f)
+                pixel[0] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 0]);
+                pixel[1] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 1]);
+                pixel[2] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 2]);
+            #undef GAMMA_CONVERT
             
             outputFile.write((char *) &pixel[0], sizeof(pixel[0]));
             outputFile.write((char *) &pixel[1], sizeof(pixel[1]));
             outputFile.write((char *) &pixel[2], sizeof(pixel[2]));
             outputFile << std::endl;
-
-            //std::bitset<sizeof pixel[0]*8> r (*(long unsigned int*)(&pixel[0]));
-            //std::bitset<sizeof pixel[1]*8> g (*(long unsigned int*)(&pixel[1]));
-            //std::bitset<sizeof pixel[2]*8> b (*(long unsigned int*)(&pixel[2]));
-
-            //outputFile << r << " " << g << " " << b << std::endl;
         }
     }
     outputFile.close();
