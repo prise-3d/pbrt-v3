@@ -148,3 +148,19 @@ cd build
 - *--startindex*: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
 
 Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
+
+#### Information
+
+All updates made into this version are encapsulated by these comments:
+```cpp
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+
+...
+...
+
+//////////////////////////
+// END PrISE-3D Updates //
+//////////////////////////
+```

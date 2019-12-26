@@ -33,7 +33,6 @@
 // core/api.cpp*
 #include "api.h"
 #include "parallel.h"
-#include "paramset.h"
 #include "spectrum.h"
 #include "scene.h"
 #include "film.h"
@@ -369,7 +368,17 @@ static std::vector<GraphicsState> pushedGraphicsStates;
 static std::vector<TransformSet> pushedTransforms;
 static std::vector<uint32_t> pushedActiveTransformBits;
 static TransformCache transformCache;
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+static std::unique_ptr<RenderInfo> renderInfo;
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
+
 int catIndentCount = 0;
+
 
 // API Forward Declarations
 std::vector<std::shared_ptr<Shape>> MakeShapes(const std::string &name,
@@ -875,6 +884,17 @@ void pbrtInit(const Options &opt) {
         Error("pbrtInit() has already been called.");
     currentApiState = APIState::OptionsBlock;
     renderOptions.reset(new RenderOptions);
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    
+    // init render information
+    renderInfo.reset(new RenderInfo);
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     graphicsState = GraphicsState();
     catIndentCount = 0;
 
@@ -963,6 +983,22 @@ void pbrtLookAt(Float ex, Float ey, Float ez, Float lx, Float ly, Float lz,
     VERIFY_INITIALIZED("LookAt");
     Transform lookAt =
         LookAt(Point3f(ex, ey, ez), Point3f(lx, ly, lz), Vector3f(ux, uy, uz));
+
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+
+    // add look at information
+    LookAtParams lookAtParams;
+    lookAtParams.Eye = Point3f(ex, ey, ez);
+    lookAtParams.Target = Point3f(lx, ly, lz);
+    lookAtParams.Up = Vector3f(ux, uy, uz);
+    renderInfo->LookAtParamsInfo = lookAtParams;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     FOR_ACTIVE_TRANSFORMS(curTransform[i] = curTransform[i] * lookAt;);
     if (PbrtOptions.cat || PbrtOptions.toPly)
         printf(
@@ -1022,6 +1058,17 @@ void pbrtPixelFilter(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("PixelFilter");
     renderOptions->FilterName = name;
     renderOptions->FilterParams = params;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // add others informations
+    renderInfo->FilterName = name;
+    renderInfo->FilterParams = params;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sPixelFilter \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1033,6 +1080,17 @@ void pbrtFilm(const std::string &type, const ParamSet &params) {
     VERIFY_OPTIONS("Film");
     renderOptions->FilmParams = params;
     renderOptions->FilmName = type;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // add others informations
+    renderInfo->FilmName = type;
+    renderInfo->FilmParams = params;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sFilm \"%s\" ", catIndentCount, "", type.c_str());
         params.Print(catIndentCount);
@@ -1044,6 +1102,17 @@ void pbrtSampler(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Sampler");
     renderOptions->SamplerName = name;
     renderOptions->SamplerParams = params;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // add others informations
+    renderInfo->SamplerName = name;
+    renderInfo->SamplerParams = params;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sSampler \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1055,6 +1124,17 @@ void pbrtAccelerator(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Accelerator");
     renderOptions->AcceleratorName = name;
     renderOptions->AcceleratorParams = params;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // add others informations
+    renderInfo->AcceleratorName = name;
+    renderInfo->AcceleratorParams = params;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sAccelerator \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1066,6 +1146,17 @@ void pbrtIntegrator(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Integrator");
     renderOptions->IntegratorName = name;
     renderOptions->IntegratorParams = params;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // add others informations
+    renderInfo->IntegratorName = name;
+    renderInfo->IntegratorParams = params;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sIntegrator \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1077,6 +1168,17 @@ void pbrtCamera(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Camera");
     renderOptions->CameraName = name;
     renderOptions->CameraParams = params;
+    
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // add others informations
+    renderInfo->CameraName = name;
+    renderInfo->CameraParams = params;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     renderOptions->CameraToWorld = Inverse(curTransform);
     namedCoordinateSystems["camera"] = renderOptions->CameraToWorld;
     if (PbrtOptions.cat || PbrtOptions.toPly) {
@@ -1647,6 +1749,16 @@ void pbrtWorldEnd() {
     namedCoordinateSystems.erase(namedCoordinateSystems.begin(),
                                  namedCoordinateSystems.end());
 }
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+RenderInfo* pbrtRenderInfo(){
+    return renderInfo.get();
+}
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 Scene *RenderOptions::MakeScene() {
     std::shared_ptr<Primitive> accelerator =

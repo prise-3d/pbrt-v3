@@ -210,7 +210,13 @@ void Film::WriteImage(Float splatScale) {
     pbrt::WriteImage(filename, &rgb[0], croppedPixelBounds, fullResolution);
 }
 
-void Film::WriteImageTemp(std::string folder, int nbSamples, int index, Float splatScale) {
+
+void Film::WriteImageTemp(int index, Float splatScale) {
+    
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+
     // Convert image to RGB and compute final pixel values
     LOG(INFO) <<
         "Converting image to RGB and computing final weighted pixel values";
@@ -252,7 +258,7 @@ void Film::WriteImageTemp(std::string folder, int nbSamples, int index, Float sp
 
     // define delimiter to split image name
     std::string delimiter = ".";
-    std::string output_folder = folder;
+    std::string output_folder = PbrtOptions.folder;
     
     // find prefix and postfix information from `filename`
     std::string filename_prefix = filename.substr(0, filename.find(delimiter));
@@ -260,14 +266,17 @@ void Film::WriteImageTemp(std::string folder, int nbSamples, int index, Float sp
 
     // build folder
     std::string folder_image = std::string(output_folder + "/" + filename_prefix);
-    std::string temp_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(nbSamples) + "-" + std::to_string(index) + filename_postfix;
+    std::string temp_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(PbrtOptions.samples) + "-" + std::to_string(index) + filename_postfix;
     
     // TODO : improve (recursively create folders)
     mkdir(output_folder.c_str(), 0775);
     mkdir(folder_image.c_str(), 0775);
 
     pbrt::WriteImage(temp_filename, &rgb[0], croppedPixelBounds, fullResolution);
-
+    
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 }
 
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {

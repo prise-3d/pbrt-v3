@@ -36,6 +36,7 @@
 #include "ext/targa.h"
 #include "fileutil.h"
 #include "spectrum.h"
+#include "api.h"
 
 #include <fstream>
 #include <iostream>
@@ -56,8 +57,16 @@ static RGBSpectrum *ReadImageTGA(const std::string &name, int *w, int *h);
 static RGBSpectrum *ReadImagePNG(const std::string &name, int *w, int *h);
 static bool WriteImagePFM(const std::string &filename, const Float *rgb,
                           int xres, int yres);
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
 static bool WriteImageRAWLS(const std::string &filename, const Float *rgb,
                           int xres, int yres, int nbChanels=3);
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
+
 static RGBSpectrum *ReadImagePFM(const std::string &filename, int *xres,
                                  int *yres);
 
@@ -85,11 +94,18 @@ std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
 
 void WriteImage(const std::string &name, const Float *rgb,
                 const Bounds2i &outputBounds, const Point2i &totalResolution) {
+
     Vector2i resolution = outputBounds.Diagonal();
 
-    if (HasExtension(name, ".rawls_20")){
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    if (HasExtension(name, ".rawls_20") || HasExtension(name, ".rawls")){
         WriteImageRAWLS(name, rgb, resolution.x, resolution.y);
     }
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
     else if (HasExtension(name, ".exr")) {
         WriteImageEXR(name, rgb, resolution.x, resolution.y, totalResolution.x,
                       totalResolution.y, outputBounds.pMin.x,
@@ -492,6 +508,10 @@ fail:
 
 static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int width, int height, int nbChanels){
     
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+
     // Part 1
     // using information write image header
 
@@ -506,9 +526,39 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
     outputFile.write((char *) &nbChanels, sizeof(nbChanels));
     outputFile << std::endl;
 
-    //outputFile << w << " " << h << " " << n << std::endl;
-
+    RenderInfo* renderInfo = pbrtRenderInfo();
     // Part 2
+    // Comments (usefull information about scene and generation data used)
+    outputFile << "COMMENTS" << std::endl;
+    outputFile << "#Samples " << PbrtOptions.samples << std::endl;
+    outputFile << "#Filter " << renderInfo->FilterName << std::endl;
+    outputFile << "  #params " << renderInfo->FilterParams.ToString() << std::endl;
+    outputFile << "#Film " << renderInfo->FilmName << std::endl;
+    outputFile << "  #params " << renderInfo->FilmParams.ToString() << std::endl;
+    outputFile << "#Sampler " << renderInfo->SamplerName << std::endl;
+    outputFile << " #params " << renderInfo->SamplerParams.ToString() << std::endl;
+    outputFile << "#Accelerator " << renderInfo->AcceleratorName << std::endl;
+    outputFile << "  #params " << renderInfo->AcceleratorParams.ToString() << std::endl;
+    outputFile << "#Integrator " << renderInfo->IntegratorName << std::endl;
+    outputFile << "  #params " << renderInfo->IntegratorParams.ToString() << std::endl;
+    outputFile << "#Camera " << renderInfo->CameraName << std::endl;
+    outputFile << "  #params " << renderInfo->CameraParams.ToString() << std::endl;
+    outputFile << "#LookAt ";
+    outputFile << renderInfo->LookAtParamsInfo.Eye.x << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Eye.y << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Eye.z << " ";
+    outputFile << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Target.x << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Target.y << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Target.z << " ";
+    outputFile << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Up.x << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Up.y << " ";
+    outputFile << renderInfo->LookAtParamsInfo.Up.z;
+    outputFile << std::endl;
+    
+
+    // Part 3
     // using data information write specific chunck
     outputFile << "DATA" << std::endl;
     outputFile << (sizeof(float) * nbChanels * width * height) << std::endl;
@@ -530,6 +580,10 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
         }
     }
     outputFile.close();
+
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 
     return true;
 }

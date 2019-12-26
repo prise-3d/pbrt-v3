@@ -131,6 +131,9 @@ int main(int argc, char *argv[]) {
         else if (!strcmp(argv[i], "--logtostderr")) {
           FLAGS_logtostderr = true;
         }
+        //////////////////////
+        // PrISE-3D Updates //
+        //////////////////////
         // additionnals arguments
         else if (!strcmp(argv[i], "--images") || !strcmp(argv[i], "-images")) {
              if (i + 1 == argc)
@@ -152,6 +155,9 @@ int main(int argc, char *argv[]) {
                  usage("missing value after --folder argument");
             options.folder = argv[++i];
         } 
+        //////////////////////////
+        // End PrISE-3D Updates //
+        //////////////////////////
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-help") ||
                    !strcmp(argv[i], "-h")) {
             usage();
@@ -166,12 +172,18 @@ int main(int argc, char *argv[]) {
             printf("*** WARNING: This is a 32-bit build of pbrt. It will crash "
                    "if used to render highly complex scenes. ***\n");
 
+        //////////////////////
+        // PrISE-3D Updates //
+        //////////////////////
         // specify max number of core used
         if (options.nThreads == 0)
             options.nThreads = NumSystemCores();
 
         printf("pbrt version 3 (built %s at %s) [Detected %d cores, used %d]\n",
                __DATE__, __TIME__, NumSystemCores(), options.nThreads);
+        //////////////////////////
+        // End PrISE-3D Updates //
+        //////////////////////////
 #ifndef NDEBUG
         LOG(INFO) << "Running debug build";
         printf("*** DEBUG BUILD ***\n");

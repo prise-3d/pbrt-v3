@@ -40,6 +40,7 @@
 
 // core/film.h*
 #include "pbrt.h"
+#include "api.h"
 #include "geometry.h"
 #include "spectrum.h"
 #include "filter.h"
@@ -70,7 +71,15 @@ class Film {
     void SetImage(const Spectrum *img) const;
     void AddSplat(const Point2f &p, Spectrum v);
     void WriteImage(Float splatScale = 1);
-    void WriteImageTemp(std::string folder, int nbSamples, int index, Float splatScale = 1);
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    void WriteImageTemp(int index, Float splatScale = 1);
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     void Clear();
 
     // Film Public Data

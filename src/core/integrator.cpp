@@ -43,6 +43,8 @@
 #include "camera.h"
 #include "stats.h"
 
+#include "api.h"
+
 namespace pbrt {
 
 STAT_COUNTER("Integrator/Camera rays traced", nCameraRays);
@@ -229,6 +231,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
     Preprocess(scene, *sampler);
     // Render image tiles in parallel
     
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
     srand(time(0));
     uint64_t seed=0;
     uint64_t numberOfSamples = PbrtOptions.samples; // get number of samples expected by the renderer by image
@@ -353,10 +358,14 @@ void SamplerIntegrator::Render(const Scene &scene) {
         }
 
         // Save final image after rendering
-        camera->film->WriteImageTemp(PbrtOptions.folder, numberOfSamples, i);
+        camera->film->WriteImageTemp(i);
     }
 
     LOG(INFO) << "All rendering finished";
+    
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 }
 
 Spectrum SamplerIntegrator::SpecularReflect(

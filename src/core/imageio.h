@@ -52,8 +52,14 @@ RGBSpectrum *ReadImageEXR(const std::string &name, int *width,
                           int *height, Bounds2i *dataWindow = nullptr,
                           Bounds2i *displayWindow = nullptr);
 
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
 void WriteImage(const std::string &name, const Float *rgb,
                 const Bounds2i &outputBounds, const Point2i &totalResolution);
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 }  // namespace pbrt
 

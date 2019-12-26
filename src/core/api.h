@@ -40,8 +40,40 @@
 
 // core/api.h*
 #include "pbrt.h"
+#include "paramset.h"
 
 namespace pbrt {
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+
+struct LookAtParams{
+  Point3f Eye;
+  Point3f Target;
+  Vector3f Up;
+};
+
+struct RenderInfo {
+
+    // RenderInfo Public Data
+    std::string FilterName;
+    ParamSet FilterParams;
+    std::string FilmName;
+    ParamSet FilmParams;
+    std::string SamplerName;
+    ParamSet SamplerParams;
+    std::string AcceleratorName;
+    ParamSet AcceleratorParams;
+    std::string IntegratorName;
+    ParamSet IntegratorParams;
+    std::string CameraName;
+    ParamSet CameraParams;
+    LookAtParams LookAtParamsInfo;
+};
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 // API Function Declarations
 void pbrtInit(const Options &opt);
@@ -90,6 +122,16 @@ void pbrtWorldEnd();
 
 void pbrtParseFile(std::string filename);
 void pbrtParseString(std::string str);
+
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+RenderInfo* pbrtRenderInfo();
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
+
 
 }  // namespace pbrt
 
