@@ -567,11 +567,16 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
         for (int x = 0; x < width; ++x) {
             Float pixel[3];
             
-            #define GAMMA_CONVERT(v) (float) Clamp(255.f * GammaCorrect(v) + 0.5f, 0.f, 255.f)
+            // Remove Gamma conversion for now (keep only samples values)
+            /*#define GAMMA_CONVERT(v) (float) Clamp(255.f * GammaCorrect(v) + 0.5f, 0.f, 255.f)
                 pixel[0] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 0]);
                 pixel[1] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 1]);
                 pixel[2] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 2]);
-            #undef GAMMA_CONVERT
+            #undef GAMMA_CONVERT*/
+
+            pixel[0] = rgb[3 * (y * width + x) + 0];
+            pixel[1] = rgb[3 * (y * width + x) + 1];
+            pixel[2] = rgb[3 * (y * width + x) + 2];
             
             outputFile.write((char *) &pixel[0], sizeof(pixel[0]));
             outputFile.write((char *) &pixel[1], sizeof(pixel[1]));
