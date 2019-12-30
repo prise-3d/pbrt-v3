@@ -71,9 +71,15 @@ void RandomSampler::StartPixel(const Point2i &p) {
     Sampler::StartPixel(p);
 }
 
-Sampler *CreateRandomSampler(const ParamSet &params) {
-    int ns = params.FindOneInt("pixelsamples", 4);
-    return new RandomSampler(ns);
+Sampler *CreateRandomSampler(const ParamSet &params, const int64_t samples) {
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    //int ns = params.FindOneInt("pixelsamples", 4);
+    return new RandomSampler(samples);
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 }
 
 }  // namespace pbrt

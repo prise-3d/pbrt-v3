@@ -56,7 +56,13 @@ class RandomSampler : public Sampler {
     RNG rng;
 };
 
-Sampler *CreateRandomSampler(const ParamSet &params);
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+Sampler *CreateRandomSampler(const ParamSet &params, const int64_t samples);
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 }  // namespace pbrt
 

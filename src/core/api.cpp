@@ -835,7 +835,13 @@ std::shared_ptr<Sampler> MakeSampler(const std::string &name,
     else if (name == "sobol")
         sampler = CreateSobolSampler(paramSet, film->GetSampleBounds());
     else if (name == "random")
-        sampler = CreateRandomSampler(paramSet);
+        //////////////////////
+        // PrISE-3D Updates //
+        //////////////////////
+        sampler = CreateRandomSampler(paramSet, PbrtOptions.samples);
+        //////////////////////////
+        // End PrISE-3D Updates //
+        //////////////////////////
     else if (name == "stratified")
         sampler = CreateStratifiedSampler(paramSet);
     else
