@@ -160,6 +160,11 @@ int main(int argc, char *argv[]) {
                  usage("missing value after --digits argument");
             options.digits = atoi(argv[++i]);
         } 
+        else if (!strcmp(argv[i], "--independent") || !strcmp(argv[i], "-independent")) {
+             if (i + 1 == argc)
+                 usage("missing value after --independent argument");
+            options.independent = bool(atoi(argv[++i]));
+        } 
         //////////////////////////
         // End PrISE-3D Updates //
         //////////////////////////

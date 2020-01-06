@@ -146,6 +146,8 @@ cd build
 - *--images*: number of images with `n` samples expected as output
 - *--folder*: specific output folder (by default `temp`)
 - *--startindex*: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
+- *--independent*: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
+- *--digit*: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
 
 Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
 

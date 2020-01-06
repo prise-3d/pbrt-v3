@@ -187,6 +187,7 @@ struct Options {
     int samples = 0; // number of samples per generated image
     int images = 1; // number of generated image (at least one)
     int startindex = 0; // start image index (if need of relaunch pbrt with specific image index)
+    bool independent = true; // specify if convergence if needed or each samples image is independent
     std::string folder = "temp"; // output folder with default `temp` value
     //////////////////////////
     // End PrISE-3D Updates //

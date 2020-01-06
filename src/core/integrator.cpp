@@ -228,7 +228,7 @@ std::unique_ptr<Distribution1D> ComputeLightPowerDistribution(
 
 // SamplerIntegrator Method Definitions
 void SamplerIntegrator::Render(const Scene &scene) {
-    Preprocess(scene, *sampler);
+    //Preprocess(scene, *sampler);
     // Render image tiles in parallel
     
     //////////////////////
@@ -244,6 +244,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
      // loop for n images, seed random generator
     for(int i=startImagesIndex; i < maxNumberOfImages; i++){
 
+        Preprocess(scene, *sampler);
         std::cout << "Rendering " << (i + 1) << " of " << maxNumberOfImages << " images" << std::endl;
 
         // define new seed for each generated image with specific number of sample
@@ -359,6 +360,11 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
         // Save final image after rendering
         camera->film->WriteImageTemp(i);
+
+         // Clear image tile into _Film_
+        if (PbrtOptions.independent){
+            camera->film->Clear();
+        }
     }
 
     LOG(INFO) << "All rendering finished";
