@@ -154,6 +154,11 @@ int main(int argc, char *argv[]) {
              if (i + 1 == argc)
                  usage("missing value after --folder argument");
             options.folder = argv[++i];
+        }
+        else if (!strcmp(argv[i], "--digits") || !strcmp(argv[i], "-digits")) {
+             if (i + 1 == argc)
+                 usage("missing value after --digits argument");
+            options.digits = atoi(argv[++i]);
         } 
         //////////////////////////
         // End PrISE-3D Updates //

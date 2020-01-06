@@ -175,15 +175,22 @@ struct Options {
         cropWindow[1][0] = 0;
         cropWindow[1][1] = 1;
     }
-    int nThreads = 0;
     bool quickRender = false;
     bool quiet = false;
     bool cat = false, toPly = false;
     std::string imageFile;
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    int nThreads = 0;
+    int digits = 5; // number of digits used to save index generated image
     int samples = 0; // number of samples per generated image
     int images = 1; // number of generated image (at least one)
     int startindex = 0; // start image index (if need of relaunch pbrt with specific image index)
     std::string folder = "temp"; // output folder with default `temp` value
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
     // x0, x1, y0, y1
     Float cropWindow[2][2];
 };
