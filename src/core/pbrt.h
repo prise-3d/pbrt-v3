@@ -189,6 +189,8 @@ struct Options {
     int startindex = 0; // start image index (if need of relaunch pbrt with specific image index)
     bool independent = true; // specify if convergence if needed or each samples image is independent
     std::string folder = "temp"; // output folder with default `temp` value
+    bool normals = false; // save or not of normals data at first iteration
+    bool zbuffer = false; // save or not of zbuffer data at first iteration
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////

@@ -45,7 +45,32 @@ STAT_COUNTER("Intersections/Shadow ray intersection tests", nShadowTests);
 bool Scene::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
     ++nIntersectionTests;
     DCHECK_NE(ray.d, Vector3f(0,0,0));
-    return aggregate->Intersect(ray, isect);
+    
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // get intersection information
+    bool results = aggregate->Intersect(ray, isect);
+
+    // TODO
+		ray.nn = isect->n;
+		ray.p = isect->p;
+		ray.u = isect->uv.x;
+		ray.v = isect->uv.y;
+
+    // if (isect->primitive != NULL)
+		// {
+		// 	ray.id = isect->primitive->id;
+		// } 
+    // else
+		// {
+		// 	ray.id = 0;
+		// }
+
+    return results;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 }
 
 bool Scene::IntersectP(const Ray &ray) const {

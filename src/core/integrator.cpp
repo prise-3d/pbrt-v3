@@ -342,7 +342,20 @@ void SamplerIntegrator::Render(const Scene &scene) {
                             ray << " -> L = " << L;
 
                         // Add camera ray's contribution to image
-                        filmTile->AddSample(cameraSample.pFilm, L, rayWeight);
+
+                        //////////////////////
+                        // PrISE-3D Updates //
+                        //////////////////////
+                        if (i == startImagesIndex){
+                            std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
+                            scene.Intersect(ray, isect.get());
+                        }
+                        
+                        filmTile->AddSample(cameraSample.pFilm, L, ray, rayWeight);
+
+                        //////////////////////////
+                        // End PrISE-3D Updates //
+                        //////////////////////////
 
                         // Free _MemoryArena_ memory from computing image sample
                         // value

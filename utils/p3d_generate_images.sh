@@ -13,8 +13,18 @@ if [ -z "$2" ]
     exit 1
 fi
 
-numberofimages=10
-numberofsamples=1
+
+nthreads=$(less /proc/cpuinfo | grep processor | wc -l)
+
+if [ -z "$3" ]
+  then
+    echo "No nthreads argument supplied, by default use ${nthreads} cpu ressources.."
+else
+  nthreads=$3
+fi
+
+numberofimages=1
+numberofsamples=30
 
 main_folder="$1/"
 output_folder=$2
@@ -29,7 +39,7 @@ do
 
     # check if filename contains 
     if [[ "$file" == ${prefix}* ]]; then
-        echo ./pbrt --images ${numberofimages} --samples ${numberofsamples} --folder ${output_folder} ${filename_fixed}
+        echo ./pbrt --images ${numberofimages} --samples ${numberofsamples} --folder ${output_folder} --nthreads ${nthreads} ${filename_fixed}
     fi 
   done
 done

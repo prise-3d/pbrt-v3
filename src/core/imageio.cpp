@@ -62,7 +62,7 @@ static bool WriteImagePFM(const std::string &filename, const Float *rgb,
 // PrISE-3D Updates //
 //////////////////////
 static bool WriteImageRAWLS(const std::string &filename, const Float *rgb,
-                          int xres, int yres, int nbChanels=3);
+                          int xres, int yres, int nbChannels);
 //////////////////////////
 // End PrISE-3D Updates //
 //////////////////////////
@@ -93,7 +93,7 @@ std::unique_ptr<RGBSpectrum[]> ReadImage(const std::string &name,
 }
 
 void WriteImage(const std::string &name, const Float *rgb,
-                const Bounds2i &outputBounds, const Point2i &totalResolution) {
+                const Bounds2i &outputBounds, const Point2i &totalResolution, int nbChannels) {
 
     Vector2i resolution = outputBounds.Diagonal();
 
@@ -101,7 +101,7 @@ void WriteImage(const std::string &name, const Float *rgb,
     // PrISE-3D Updates //
     //////////////////////
     if (HasExtension(name, ".rawls_20") || HasExtension(name, ".rawls")){
-        WriteImageRAWLS(name, rgb, resolution.x, resolution.y);
+        WriteImageRAWLS(name, rgb, resolution.x, resolution.y, nbChannels);
     }
     //////////////////////////
     // End PrISE-3D Updates //
@@ -506,7 +506,7 @@ fail:
     return false;
 }
 
-static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int width, int height, int nbChanels){
+static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int width, int height, int nbChannels){
     
     //////////////////////
     // PrISE-3D Updates //
@@ -518,12 +518,12 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
     std::ofstream outputFile(filename, std::ios::out | std::ios::binary);
 
     outputFile << "IHDR" << std::endl;
-    outputFile << ((sizeof(width) + sizeof(height) + sizeof(nbChanels)))  << std::endl;
+    outputFile << ((sizeof(width) + sizeof(height) + sizeof(nbChannels)))  << std::endl;
     outputFile.write((char *) &width, sizeof(width));
     outputFile << " ";
     outputFile.write((char *) &height, sizeof(height));
     outputFile << " ";
-    outputFile.write((char *) &nbChanels, sizeof(nbChanels));
+    outputFile.write((char *) &nbChannels, sizeof(nbChannels));
     outputFile << std::endl;
 
     RenderInfo* renderInfo = pbrtRenderInfo();
@@ -561,12 +561,11 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
     // Part 3
     // using data information write specific chunck
     outputFile << "DATA" << std::endl;
-    outputFile << (sizeof(float) * nbChanels * width * height) << std::endl;
+    outputFile << (sizeof(float) * nbChannels * width * height) << std::endl;
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            Float pixel[3];
-            
+        
             // Remove Gamma conversion for now (keep only samples values)
             /*#define GAMMA_CONVERT(v) (float) Clamp(255.f * GammaCorrect(v) + 0.5f, 0.f, 255.f)
                 pixel[0] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 0]);
@@ -574,13 +573,14 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
                 pixel[2] = GAMMA_CONVERT(rgb[3 * (y * width + x) + 2]);
             #undef GAMMA_CONVERT*/
 
-            pixel[0] = rgb[3 * (y * width + x) + 0];
-            pixel[1] = rgb[3 * (y * width + x) + 1];
-            pixel[2] = rgb[3 * (y * width + x) + 2];
-            
-            outputFile.write((char *) &pixel[0], sizeof(pixel[0]));
-            outputFile.write((char *) &pixel[1], sizeof(pixel[1]));
-            outputFile.write((char *) &pixel[2], sizeof(pixel[2]));
+            Float pixel[nbChannels];
+
+            for(int c = 0; c < nbChannels; ++c){
+                pixel[c] = rgb[nbChannels * (y * width + x) + c];
+                
+                outputFile.write((char *) &pixel[c], sizeof(pixel[c]));
+            }
+      
             outputFile << std::endl;
         }
     }

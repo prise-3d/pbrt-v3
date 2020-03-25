@@ -884,6 +884,19 @@ class Ray {
     // Ray Public Data
     Point3f o;
     Vector3f d;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    // Intersection information...
+	mutable Point3f p;
+	mutable Normal3f nn;
+	mutable float u;
+	mutable float v;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+
     mutable Float tMax;
     Float time;
     const Medium *medium;
