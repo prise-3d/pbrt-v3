@@ -136,22 +136,6 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
         tilePixel.contribSum.ToXYZ(xyz);
         for (int i = 0; i < 3; ++i) mergePixel.xyz[i] += xyz[i];
         mergePixel.filterWeightSum += tilePixel.filterWeightSum;
-
-        //////////////////////
-        // PrISE-3D Updates //
-        //////////////////////
-        // "set" zbuffer information from tile
-        const Float &bufferPixel = tile->GetBufferPoint(pixel);
-        Float &mergeBufferPixel = GetBufferPoint(pixel);
-        mergeBufferPixel = bufferPixel;
-
-        // "set" normals found
-        const Normal3f &normalPixel = tile->GetNormal(pixel);
-        Normal3f &mergeNormalPixel = GetNormal(pixel);
-        mergeNormalPixel = normalPixel;
-        //////////////////////////
-        // End PrISE-3D Updates //
-        //////////////////////////
     }
 }
 
@@ -333,7 +317,7 @@ void Film::WriteImageTemp(int index, Float splatScale) {
         int offset = 0;
         for (Point2i p : croppedPixelBounds) {
             // Convert pixel XYZ color to RGB
-            Normal3f &normal = GetNormal(p);
+            Normal3f &normal = GetNormalPoint(p);
 
             // Scale pixel value by _scale_
             normalsFloat[3 * offset] = normal.x;

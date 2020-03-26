@@ -24,41 +24,20 @@ def extract(scene_folder, output):
 
     for filename in files:
 
-        if normals_file in filename and current_extension in filename:
+        if (normals_file not in filename and zbuffer_file not in filename) and current_extension in filename:
 
             file_path = os.path.join(scene_folder, filename)
 
             # build expected output files
             outfile_path = os.path.join(output_scene_folder, filename.replace(current_extension, save_extension))
             
-            print('extracts normals from', file_path, 'and save it into', outfile_path)
+            print('extracts image from', file_path, 'and save it into', outfile_path)
 
             # open file and normalize data
-            normals_rawls = Rawls.load(file_path)
-            normals_rawls.normalize()
-
-            normals_rawls.data = normals_rawls.data * 255
+            images_rawls = Rawls.load(file_path)
 
             # do not apply gamma conversion
-            normals_rawls.save(outfile_path, gamma_convert=False)
-
-        if zbuffer_file in filename and current_extension in filename:
-            
-            file_path = os.path.join(scene_folder, filename)
-
-            # build expected output files
-            outfile_path = os.path.join(output_scene_folder, filename.replace(current_extension, save_extension))
-            
-            print('extracts zbuffer from', file_path, 'and save it into', outfile_path)
-
-            # open file and normalize data
-            zbuffer_rawls = Rawls.load(file_path)
-            zbuffer_rawls.normalize()
-
-            zbuffer_rawls.data = zbuffer_rawls.data * 255
-
-            # do not apply gamma conversion
-            zbuffer_rawls.save(outfile_path, gamma_convert=False)
+            images_rawls.save(outfile_path)
 
 def main():
 

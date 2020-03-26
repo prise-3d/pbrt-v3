@@ -253,6 +253,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
         // Compute number of tiles, _nTiles_, to use for parallel rendering
         Bounds2i sampleBounds = camera->film->GetSampleBounds();
+
+        Point2i fullResolution =  camera->film->fullResolution;
+
         Vector2i sampleExtent = sampleBounds.Diagonal();
         const int tileSize = 16;
         Point2i nTiles((sampleExtent.x + tileSize - 1) / tileSize,
@@ -346,16 +349,23 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         //////////////////////
                         // PrISE-3D Updates //
                         //////////////////////
-                        if (i == startImagesIndex){
-                            std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
-                            scene.Intersect(ray, isect.get());
-                        }
-                        
-                        filmTile->AddSample(cameraSample.pFilm, L, ray, rayWeight);
+                        if ((PbrtOptions.zbuffer || PbrtOptions.normals) && i == startImagesIndex){
 
+                            // only if current pixel is in output image resolution
+                            if ((pixel.x > 0 && pixel.x < fullResolution.x) && (pixel.y > 0 && pixel.y < fullResolution.y)){
+
+                                // get intersection information
+                                std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
+                                        scene.Intersect(ray, isect.get());
+
+                                camera->film->UpdateAdditionals(pixel, ray);
+                            }
+                        }
                         //////////////////////////
                         // End PrISE-3D Updates //
                         //////////////////////////
+
+                        filmTile->AddSample(cameraSample.pFilm, L, rayWeight);
 
                         // Free _MemoryArena_ memory from computing image sample
                         // value
