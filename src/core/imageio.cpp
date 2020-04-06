@@ -61,6 +61,7 @@ static bool WriteImagePFM(const std::string &filename, const Float *rgb,
 //////////////////////
 // PrISE-3D Updates //
 //////////////////////
+static Float *ReadImageRAWLS(const std::string &name);
 static bool WriteImageRAWLS(const std::string &filename, const Float *rgb,
                           int xres, int yres, int nbChannels);
 //////////////////////////
@@ -506,11 +507,15 @@ fail:
     return false;
 }
 
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+static Float *ReadImageRAWLS(const std::string &name){
+    // TODO : read rawls file
+    return nullptr;
+}
+
 static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int width, int height, int nbChannels){
-    
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
 
     // Part 1
     // using information write image header
@@ -586,11 +591,10 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
     }
     outputFile.close();
 
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     return true;
 }
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 }  // namespace pbrt

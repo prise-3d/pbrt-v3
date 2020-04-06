@@ -52,20 +52,10 @@ bool Scene::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
     // get intersection information
     bool results = aggregate->Intersect(ray, isect);
 
-    // TODO
 		ray.nn = isect->n;
 		ray.p = isect->p;
 		ray.u = isect->uv.x;
 		ray.v = isect->uv.y;
-
-    // if (isect->primitive != NULL)
-		// {
-		// 	ray.id = isect->primitive->id;
-		// } 
-    // else
-		// {
-		// 	ray.id = 0;
-		// }
 
     return results;
     //////////////////////////

@@ -46,6 +46,7 @@
 #include "filter.h"
 #include "stats.h"
 #include "parallel.h"
+#include "imageio.h"
 #include <sys/stat.h>
 
 namespace pbrt {
@@ -69,6 +70,13 @@ class Film {
     std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
     void MergeFilmTile(std::unique_ptr<FilmTile> tile);
     void SetImage(const Spectrum *img) const;
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    void LoadRawlsImage(const std::string filename) const;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
     void AddSplat(const Point2f &p, Spectrum v);
     void WriteImage(Float splatScale = 1);
 

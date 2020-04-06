@@ -36,6 +36,7 @@
 #include "paramset.h"
 #include "imageio.h"
 #include "stats.h"
+#include <fstream>
 
 namespace pbrt {
 
@@ -68,7 +69,11 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
     // PrISE-3D Updates //
     //////////////////////
     zbuffer = std::unique_ptr<Float[]>(new Float[croppedPixelBounds.Area()]);
-    normals = std::unique_ptr<Normal3f[]>(new Normal3f[croppedPixelBounds.Area()]);
+    normals = std::unique_ptr<Normal3f[]>(new Normal3f[croppedPixelBounds.Area()]); 
+
+    for (int i = 0; i < croppedPixelBounds.Area(); ++i){
+        zbuffer[i] = 0; // default value
+    }
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -86,6 +91,96 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
         }
     }
 }
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+void Film::LoadRawlsImage(const std::string filename) const {
+
+    // only one read buffer used for the whole function
+    std::ifstream rf(filename, std::ios::out | std::ios::binary);
+
+    if(!rf) {
+      std::cout << "Cannot open file!" << std::endl;
+    }
+
+    std::string line; 
+    unsigned nbChanels, width, height;
+    char c; // to get space of new line char
+
+    // READ IHDR info
+    bool ihdrBegin = false;
+
+    while (!ihdrBegin && std::getline(rf, line)) { 
+
+        if (line.find(std::string("IHDR")) != std::string::npos){
+            ihdrBegin = true;
+            std::getline(rf, line); // avoid data size line
+
+            rf.read((char *) &width, sizeof(unsigned));
+            rf.get(c);
+            rf.read((char *) &height, sizeof(unsigned));
+            rf.get(c);
+            rf.read((char *) &nbChanels, sizeof(unsigned));
+            rf.get(c);
+        }
+    }
+
+    bool dataBegin = false;
+
+    // READ DATA info
+    // case of data chunck begin
+    while (!dataBegin && std::getline(rf, line)) { 
+
+        if (line.find(std::string("DATA")) != std::string::npos){
+            dataBegin = true;
+        }
+    }
+
+    // resize buffer if necessary
+    float* buffer = new float[height * width * nbChanels];
+
+    std::getline(rf, line);
+    unsigned size = std::stoi(line);
+    float chanelValue;
+
+    for(unsigned y = 0; y < height; y++){
+
+        for(unsigned x = 0; x < width; x++) {
+
+            for(int j = 0; j < nbChanels; j++){
+                rf.read((char *) &chanelValue, sizeof(float));  
+                
+                buffer[nbChanels * width * y + nbChanels * x + j] = chanelValue; 
+            } 
+
+            // go to next line
+            rf.get(c);
+        }
+    }
+
+    rf.close();
+
+    if(!rf.good()) {
+        std::cout << "Error occurred at writing time!" << std::endl;
+    }
+
+    // for each values into buffer set current film buffer
+    int nPixels = croppedPixelBounds.Area();
+    int offset = 0;
+
+    for (int i = 0; i < nPixels; ++i) {
+        Pixel &p = pixels[i];
+        p.xyz[0] = buffer[offset];
+        p.xyz[1] = buffer[offset + 1];
+        p.xyz[2] = buffer[offset + 2];
+
+        offset++;
+    }
+}
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 Bounds2i Film::GetSampleBounds() const {
     Bounds2f floatBounds(Floor(Point2f(croppedPixelBounds.pMin) +
@@ -297,13 +392,28 @@ void Film::WriteImageTemp(int index, Float splatScale) {
 
         std::unique_ptr<Float[]> zbufferFloat(new Float[croppedPixelBounds.Area()]);
         int offset = 0;
+
+        Float maxValue = Float(0.);
+
         for (Point2i p : croppedPixelBounds) {
             // Convert pixel XYZ color to RGB
             Float &bufferPoint = GetBufferPoint(p);
 
+            if (bufferPoint > maxValue && bufferPoint != Infinity){
+                maxValue = Float(bufferPoint);
+            }
+
             // Scale pixel value by _scale_
             zbufferFloat[offset] = bufferPoint;
             ++offset;
+        }
+
+        // for each Infinity value update value using max current value of zbuffer
+        for(int i = 0; i < croppedPixelBounds.Area(); ++i){
+
+            if (zbufferFloat[i] == Infinity){
+                zbufferFloat[i] = Float(maxValue);
+            }
         }
 
         pbrt::WriteImage(zbuffer_filename, &zbufferFloat[0], croppedPixelBounds, fullResolution, 1);
@@ -320,9 +430,9 @@ void Film::WriteImageTemp(int index, Float splatScale) {
             Normal3f &normal = GetNormalPoint(p);
 
             // Scale pixel value by _scale_
-            normalsFloat[3 * offset] = normal.x;
-            normalsFloat[3 * offset + 1] = normal.y;
-            normalsFloat[3 * offset + 2] = normal.z;
+            normalsFloat[3 * offset] = (normal.x + 1) * 0.5;
+            normalsFloat[3 * offset + 1] = (normal.y + 1) * 0.5;
+            normalsFloat[3 * offset + 2] = (normal.z + 1) * 0.5;
             ++offset;
         }
 

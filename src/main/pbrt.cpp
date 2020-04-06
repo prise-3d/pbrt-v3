@@ -36,6 +36,7 @@
 #include "api.h"
 #include "parser.h"
 #include "parallel.h"
+#include "fileutil.h"
 #include <glog/logging.h>
 
 using namespace pbrt;
@@ -174,7 +175,16 @@ int main(int argc, char *argv[]) {
              if (i + 1 == argc)
                  usage("missing value after --zbuffer argument");
             options.zbuffer = bool(atoi(argv[++i]));
-        } 
+        }
+        else if (!strcmp(argv[i], "--load") || !strcmp(argv[i], "-load")) {
+             if (i + 1 == argc)
+                 usage("missing value after --load argument");
+            options.load = argv[++i];
+            if (!HasExtension(options.load, ".rawls")){
+                printf("*** Error: rawls image filepath is not valid***\n");
+                return 0;
+            }
+        }
         //////////////////////////
         // End PrISE-3D Updates //
         //////////////////////////

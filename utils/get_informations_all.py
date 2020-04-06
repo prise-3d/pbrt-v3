@@ -43,6 +43,7 @@ def extract(scene_folder, output):
             normals_rawls = Rawls.load(file_path)
             # not necessary already normalized
             # normals_rawls.normalize() 
+
             normals_rawls.data = normals_rawls.data * 255
             
             # do not apply gamma conversion
@@ -70,7 +71,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="extract and save normals and zbuffer")
 
-    parser.add_argument('--folder', type=str, help="folder which contains normals and zbuffer data (rawls format)")
+    parser.add_argument('--folder', type=str, help="folder which contains all scenes")
     parser.add_argument('--output', type=str, help="output data folder")
 
     args = parser.parse_args()
@@ -78,7 +79,9 @@ def main():
     p_folder = args.folder
     p_output = args.output
 
-    extract(p_folder, p_output)
+    for folder in os.listdir(p_folder):
+        folder_path = os.path.join(p_folder, folder)
+        extract(folder_path, p_output)
 
 if __name__ == "__main__":
     main()

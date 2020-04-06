@@ -191,6 +191,7 @@ struct Options {
     std::string folder = "temp"; // output folder with default `temp` value
     bool normals = false; // save or not of normals data at first iteration
     bool zbuffer = false; // save or not of zbuffer data at first iteration
+    std::string load = ""; // rawls image path to load when starting rendering
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
