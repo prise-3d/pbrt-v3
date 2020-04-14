@@ -269,7 +269,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
                        (sampleExtent.y + tileSize - 1) / tileSize);
 
         // update reporter base on tile size and number of samples
-        ProgressReporter reporter(nTiles.x * nTiles.y, "Rendering");
+        ProgressReporter reporter(PbrtOptions.samples * nTiles.x * nTiles.y, "Rendering");
         {   
             // Equivalent to
             // for (int y = 0; y < nTiles.y; ++y){
@@ -302,7 +302,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     camera->film->GetFilmTile(tileBounds);
 
                 // change the way of computed tile (here 1 spp per 1 spp)
-                // ParallelFor([&](int j){
+                //ParallelFor([&](int j){
                 for (int j = 0; j < PbrtOptions.samples; j++) {
 
                     // Loop over pixels in tile to render them
@@ -396,25 +396,29 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                         filmTile->AddSample(cameraSample.pFilm, L, rayWeight);
 
-                        //////////////////////
-                        // PrISE-3D Updates //
-                        //////////////////////
-                        // check number of samples for this tile
-                        // even if call of this method is at each every samples,
-                        // it's more convenient for merging with DL
-                        if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0 && j >= PbrtOptions.runDLEvery) {
-                            std::cout << "Use of model" << std::endl;
-                            // merge using DL denoising autoencoder
-                            // need pointer (std::mode will remove the unique ptr)
-                            camera->film->ApplyDL(filmTile.get());
-                        }
-                        //////////////////////////
-                        // End PrISE-3D Updates //
-                        //////////////////////////
-
                         // Free _MemoryArena_ memory from computing image sample value
                         arena.Reset();
+
                     }
+
+                    //////////////////////
+                    // PrISE-3D Updates //
+                    //////////////////////
+                    // check number of samples for this tile
+                    // even if call of this method is at each every samples,
+                    // it's more convenient for merging with DL
+                    if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0 && j >= PbrtOptions.runDLEvery) {
+                        // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
+                        // merge using DL denoising autoencoder
+                        // need pointer (std::mode will remove the unique ptr)
+                        camera->film->ApplyDL(filmTile.get());
+                    }
+                    //////////////////////////
+                    // End PrISE-3D Updates //
+                    //////////////////////////
+
+
+                    reporter.Update();
                      
                 }//, PbrtOptions.samples, 1); 
 
@@ -422,8 +426,6 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                 // Merge image tile into _Film_
                 camera->film->MergeFilmTile(std::move(filmTile));
-
-                reporter.Update();
 
             }, nTiles);
         }
@@ -478,8 +480,7 @@ Spectrum SamplerIntegrator::SpecularReflect(
             rd.ryDirection =
                 wi - dwody + 2.f * Vector3f(Dot(wo, ns) * dndy + dDNdy * ns);
         }
-        return f * Li(rd, scene, sampler, arena, depth + 1) * AbsDot(wi, ns) /
-               pdf;
+        return f * Li(rd, scene, sampler, arena, depth + 1) * AbsDot(wi, ns) / pdf;
     } else
         return Spectrum(0.f);
 }

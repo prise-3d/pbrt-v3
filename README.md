@@ -62,6 +62,10 @@ cd build
 - *--zbuffer*: boolean which specifies if Z-Buffer is saved after generating first image
 - *--model_path*: pytorch model to use (need `.pt` file), follow this [tutorial](https://pytorch.org/tutorials/advanced/cpp_export.html) to extract your model.
 
+Python script convertion for pytorch model is available here [script](https://github.com/prise-3d/DL-AAN/blob/master/autoencoder_convert.py) and an c++ example [project](https://github.com/prise-3d/DL-AAN/tree/master/cppexample) is also available.
+
+**Output information:**
+
 Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
 
 Normals Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-normals.rawls`
