@@ -12,7 +12,7 @@ PROJECT ( PBRT-V3 )
 # Add libtorch to project
 # cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
 find_package(Torch REQUIRED)
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 OPTION(PBRT_FLOAT_AS_DOUBLE "Use 64-bit floats" OFF)
 

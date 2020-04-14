@@ -216,22 +216,22 @@ std::unique_ptr<FilmTile> Film::GetFilmTile(const Bounds2i &sampleBounds) {
         maxSampleLuminance));
 
     // // if use of model, set it
-    // if (PbrtOptions.useOfDLModel){
+    if (PbrtOptions.useOfDLModel){
 
-    //     try {
-    //         // Deserialize the ScriptModule from a file using torch::jit::load().
+        try {
+            // Deserialize the ScriptModule from a file using torch::jit::load().
 
-    //         torch::jit::script::Module DLModule; 
-    //         DLModule = torch::jit::load(PbrtOptions.model_path.c_str());
+            torch::jit::script::Module DLModule; 
+            DLModule = torch::jit::load(PbrtOptions.model_path.c_str());
             
-    //         // now associate this module to Tile
-    //         filmTile->module = std::unique_ptr<torch::jit::script::Module>(new torch::jit::script::Module(DLModule));
-    //     }
-    //     catch (const c10::Error& e) {
-    //         std::cerr << "error loading the model\n";
-    //     }
+            // now associate this module to Tile
+            filmTile->module = std::unique_ptr<torch::jit::script::Module>(new torch::jit::script::Module(DLModule));
+        }
+        catch (const c10::Error& e) {
+            std::cerr << "error loading the model\n";
+        }
 
-    // }
+    }
 
     return filmTile;
     //////////////////////////
@@ -383,10 +383,9 @@ void Film::ApplyDL(FilmTile* tile) {
             
             float currentChannel = (float)(log10(rgb[i] + 1));
 
-            if (pixel.x == 1 && pixel.y == 1){    
-                std::cout << "Input " << pixel << std::endl;
-                std::cout << "Before " << rgb[i] << " - After " << currentChannel << std::endl;
-            }
+            // if (pixel.x == 1 && pixel.y == 1){    
+            //     std::cout << "Input => Before " << rgb[i] << " - After " << currentChannel << std::endl;
+            // }
 
             inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
             
@@ -501,10 +500,9 @@ void Film::ApplyDL(FilmTile* tile) {
 
             //std::cout << rgbValues[i] << std::endl;
 
-            if (pixel.x == 1 && pixel.y == 1){    
-                std::cout << "Input " << pixel << std::endl;
-                std::cout << "Before " << xv.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
-            }
+            // if (pixel.x == 1 && pixel.y == 1){    
+            //     std::cout << "Output => Before " << xv.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
+            // }
             
             // reverse scale
             // Scale pixel value by _scale_
