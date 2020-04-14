@@ -205,10 +205,38 @@ std::unique_ptr<FilmTile> Film::GetFilmTile(const Bounds2i &sampleBounds) {
     Point2i p0 = (Point2i)Ceil(floatBounds.pMin - halfPixel - filter->radius);
     Point2i p1 = (Point2i)Floor(floatBounds.pMax - halfPixel + filter->radius) +
                  Point2i(1, 1);
+
     Bounds2i tilePixelBounds = Intersect(Bounds2i(p0, p1), croppedPixelBounds);
-    return std::unique_ptr<FilmTile>(new FilmTile(
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    auto filmTile = std::unique_ptr<FilmTile>(new FilmTile(
         tilePixelBounds, filter->radius, filterTable, filterTableWidth,
         maxSampleLuminance));
+
+    // if use of model, set it
+    if (PbrtOptions.useOfDLModel){
+
+        try {
+            // Deserialize the ScriptModule from a file using torch::jit::load().
+
+            torch::jit::script::Module DLModule; 
+            DLModule = torch::jit::load(PbrtOptions.model_path.c_str());
+            
+            // now associate this module to Tile
+            filmTile->module = std::unique_ptr<torch::jit::script::Module>(new torch::jit::script::Module(DLModule));
+        }
+        catch (const c10::Error& e) {
+            std::cerr << "error loading the model\n";
+        }
+
+    }
+
+    return filmTile;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 }
 
 void Film::Clear() {
@@ -238,7 +266,23 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 //////////////////////
 // PrISE-3D Updates //
 //////////////////////
-void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
+
+Float Film::getMaxZBuffer(){
+
+    // TODO : To improve...
+    Float maxZBuffer = 0;
+
+    for (int i = 0; i < croppedPixelBounds.Area(); i++){
+        if (maxZBuffer < zbuffer[i]){
+            maxZBuffer = Float(zbuffer[i]);
+        }
+    }
+
+    return maxZBuffer;
+};
+
+
+void Film::ApplyDL(FilmTile* tile) {
 
     ProfilePhase p(Prof::MergeFilmTile);
     VLOG(1) << "Apply DL and merge film tile" << tile->pixelBounds << " using " << PbrtOptions.DLConfidence << "%";
@@ -246,9 +290,9 @@ void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
 
     // build model input
     // expected (1, 7, 32, 32)
-    // 1. mean pixel values (preprocessing: log + normalization)
-    // 2. normals values (preprocessing: normalization)
-    // 3. zbuffer values (preprocessing: normalization)
+    // 1. mean pixel values [preprocessing: log + normalization ((x_i - min_Log(X))/(max_Log(X) - min_Log(X)))]
+    // 2. normals values [preprocessing: normalization ((x_i + 1) * 0.5)]
+    // 3. zbuffer values [preprocessing: normalization (x_i / max(X)) ]
 
     // check tile size
     int nChannels = 7;
@@ -267,8 +311,9 @@ void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
     std::cout << "Input values " << nChannels * nChannelValues << std::endl;
 
     // store max values for mean input and zBuffer
-    Float maxLogXYZ = 0;
-    Float maxZbuffer = 0;
+    float maxLogRGB = std::numeric_limits<float>::min();
+    float minLogRGB = std::numeric_limits<float>::max();
+    Float splatScale = 1.; // by default
 
     int pixelCounter = 0;
     double epsilon = std::numeric_limits<double>::epsilon();
@@ -289,19 +334,70 @@ void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
         Normal3f &normal = GetNormalPoint(pixel);
         Float &bufferPoint = GetBufferPoint(pixel);
 
+        // Begin RGB conversion process
+        // Check `Film::writeImage` for this process
         Float xyz[3];
-        tilePixel.contribSum.ToXYZ(xyz);
+        tilePixel.contribSum.ToXYZ(xyz); // convert spectrum
 
-        // fill XYZ values
-        Float filterSum = mergePixel.filterWeightSum + tilePixel.filterWeightSum;
-
+        // merge xyz values from current tile and film
         for (int i = 0; i < 3; ++i){
-            // normalize channel and apply log on it
-            Float currentChannel = (float)(log10((mergePixel.xyz[i] + xyz[i] + epsilon) / filterSum));
+            xyz[i] += mergePixel.xyz[i];
+        }
+
+        // convert to RGB
+        Float rgb[3];
+        XYZToRGB(xyz, rgb);
+
+        // Normalize pixel with weight sum
+        Float filterWeightSum = mergePixel.filterWeightSum + tilePixel.filterWeightSum;
+        if (filterWeightSum != 0) {
+            Float invWt = (Float)1 / filterWeightSum;
+            rgb[0] = std::max((Float)0, rgb[0] * invWt);
+            rgb[1] = std::max((Float)0, rgb[1] * invWt);
+            rgb[2] = std::max((Float)0, rgb[2] * invWt);
+        }
+
+        // Add splat value at pixel
+        Float splatRGB[3];
+        Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
+                        mergePixel.splatXYZ[1], 
+                        mergePixel.splatXYZ[2]};
+
+        XYZToRGB(splatXYZ, splatRGB);
+
+        rgb[0] += splatScale * splatRGB[0];
+        rgb[1] += splatScale * splatRGB[1];
+        rgb[2] += splatScale * splatRGB[2];
+
+        // Scale pixel value by _scale_
+        rgb[0] *= scale;
+        rgb[1] *= scale;
+        rgb[2] *= scale;
+
+        // End RGB conversion process
+
+        // fill RGB values with expected preprocessing
+        for (int i = 0; i < 3; ++i){
+
+            // apply log on it (avoid negative values and -inf issue)
+            // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
+            
+            float currentChannel = (float)(log10(rgb[i] + 1));
+
+            if (pixel.x == 1 && pixel.y == 1){    
+                std::cout << "Input " << pixel << std::endl;
+                std::cout << "Before " << rgb[i] << " - After " << currentChannel << std::endl;
+            }
+
             inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
             
-            if (currentChannel > maxLogXYZ){
-                maxLogXYZ = currentChannel;
+            // store min and max information for normalization
+            if (currentChannel > maxLogRGB){
+                maxLogRGB = currentChannel;
+            }
+
+            if (currentChannel < minLogRGB){
+                minLogRGB = currentChannel;
             }
         }
         
@@ -311,6 +407,7 @@ void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
         inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
 
         // fill zBuffer value
+        // std::cout << pixel << " " << bufferPoint << std::endl;
         inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint);
 
         pixelCounter++;
@@ -330,26 +427,28 @@ void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
 
         for (int i = 0; i < 3; ++i){
             // normalize channel and apply log on it
-            inputValues.at(pixelCounter + i * nChannelValues) /= ((float)maxLogXYZ);
+            inputValues.at(pixelCounter + i * nChannelValues) = (inputValues.at(pixelCounter + i * nChannelValues) - minLogRGB) / (maxLogRGB - minLogRGB);
         }
 
         // normalize zBuffer value
-        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)maxZbuffer);
+        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)getMaxZBuffer());
 
         pixelCounter++;
     }
 
+    // TODO: check mean/zbuffer normalization (here based on sample only, during training based on whole image)
+    // Update this part for training set ?
+
     // Create a vector of inputs for load model
     std::vector<torch::jit::IValue> inputs;
     
-    auto inputData = torch::tensor(inputValues);
-    auto inputDataReshaped = inputData.view({1, nChannels, tileSize, tileSize});
-  
-    // add input data to input IValue vector for model
-    inputs.push_back(inputDataReshaped);
+    auto tensData = torch::tensor(inputValues);
+    auto tensDataReshaped = tensData.view({1, 7, 32, 32});
+
+    inputs.push_back(tensDataReshaped);
 
     // Execute the model and turn its output into a tensor.
-    at::Tensor output = module.forward(inputs).toTensor();
+    at::Tensor output = tile->module->forward(inputs).toTensor();
 
     // Read output data
     std::vector<float> xv;
@@ -363,10 +462,45 @@ void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
       xv.push_back(outputData[i]);
     }
 
-    // TODO :
+    pixelCounter = 0;
     // renormalize (normalization * maxLog + exp) output model data
+    // extract input model data
+    for (Point2i pixel : tile->GetPixelBounds()) {
+        
+        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
+        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
+            continue;
+
+        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
+            continue;
+
+        // Merge _pixel_ into _Film::pixels_
+        const FilmTilePixel &tilePixel = tile->GetPixel(pixel);
+        Pixel &mergePixel = GetPixel(pixel);
+
+        Float rgbValues[3];
+        Float xyzValues[3];
+
+        for (int i = 0; i < 3; ++i){
+
+            // reverse normalization
+            // y = x_i * (max(X) - min(X)) + min(X)
+            rgbValues[i] = xv.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
+
+            // reverse log10 function (and remove 1 which was added to log function previously)
+            rgbValues[i] = pow(10, rgbValues[i]) - 1;
+
+            //std::cout << rgbValues[i] << std::endl;
+
+            if (pixel.x == 1 && pixel.y == 1){    
+                std::cout << "Input " << pixel << std::endl;
+                std::cout << "Before " << xv.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
+            }
+        }
+        pixelCounter++;
+    }
     // affects model data with percent of confidence
-    // reinit filterWidth after applying output on film normalization
+    // reinit filterWidth if necessary after applying output on film normalization
 }
 //////////////////////////
 // End PrISE-3D Updates //

@@ -81,7 +81,8 @@ class Film {
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
-    void ApplyDL(FilmTile* tile, torch::jit::script::Module module);
+    void ApplyDL(FilmTile* tile);
+    Float getMaxZBuffer();
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -272,6 +273,7 @@ class FilmTile {
     std::vector<FilmTilePixel> pixels;
     const Float maxSampleLuminance;
     friend class Film;
+    std::unique_ptr<torch::jit::script::Module> module;
 };
 
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter);

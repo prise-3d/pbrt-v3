@@ -235,21 +235,10 @@ void SamplerIntegrator::Render(const Scene &scene) {
     // PrISE-3D Updates //
     //////////////////////
 
-    torch::jit::script::Module moduleModel;
-
-    // first load model if exists (passed as parameter)
+    // check if necessary to use DL module
     if (PbrtOptions.model_path.length() > 0){
-        // try to load pytorch model
 
-        try {
-            // Deserialize the ScriptModule from a file using torch::jit::load().
-            moduleModel = torch::jit::load(PbrtOptions.model_path.c_str());
-            PbrtOptions.useOfDLModel = true;
-            std::cout << "Load of DL pytorch model " << PbrtOptions.model_path << " done.." << std::endl;
-        }
-        catch (const c10::Error& e) {
-            std::cerr << "error loading the model\n";
-        }
+        PbrtOptions.useOfDLModel = true;
     }
 
     srand(time(0));
@@ -404,8 +393,8 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     
                         // check number of samples for this tile
                         if (j % PbrtOptions.runDLEvery == 0 && j >= PbrtOptions.runDLEvery){
-                            std::cout << "Use of pytorch denoising model after " << j << " samples" << std::endl;
-                            camera->film->ApplyDL(filmTile.get(), moduleModel);
+                            
+                            camera->film->ApplyDL(filmTile.get());
                         }
                     }
                     //////////////////////////
