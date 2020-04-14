@@ -57,6 +57,7 @@ bool Scene::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
 		ray.u = isect->uv.x;
 		ray.v = isect->uv.y;
 
+    // return results;
     return results;
     //////////////////////////
     // End PrISE-3D Updates //
