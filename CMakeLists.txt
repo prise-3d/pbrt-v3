@@ -9,6 +9,11 @@ SET (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 PROJECT ( PBRT-V3 )
 
+# Add libtorch to project
+# cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+
 OPTION(PBRT_FLOAT_AS_DOUBLE "Use 64-bit floats" OFF)
 
 IF (PBRT_FLOAT_AS_DOUBLE)
@@ -70,13 +75,13 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 # Annoying compiler-specific details
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++14")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-conversion-null")
 ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
 ELSEIF(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
   FIND_PROGRAM(XIAR xiar)
   IF(XIAR)
@@ -494,7 +499,7 @@ ADD_SANITIZERS ( pbrt )
 # A non-exhaustive but pretty representative set..
 # Note that we work-around shoddy c++11 support in MSVC2013
 # (constexpr, etc.), so don't test for that stuff here
-SET ( PBRT_CXX11_FEATURES
+SET ( PBRT_CXX14_FEATURES
   cxx_auto_type
   cxx_explicit_conversions
   cxx_lambdas
@@ -502,7 +507,9 @@ SET ( PBRT_CXX11_FEATURES
   cxx_range_for
   cxx_static_assert
 )
-TARGET_COMPILE_FEATURES ( pbrt PRIVATE ${PBRT_CXX11_FEATURES} )
+TARGET_COMPILE_FEATURES ( pbrt PRIVATE ${PBRT_CXX14_FEATURES})
+TARGET_LINK_LIBRARIES ( pbrt ${ALL_PBRT_LIBS} "${TORCH_LIBRARIES}")
+SET_PROPERTY (TARGET pbrt PROPERTY CXX_STANDARD 14)
 
 IF (WIN32)
   # Avoid a name clash when building on Visual Studio
@@ -523,26 +530,29 @@ ADD_EXECUTABLE ( pbrt_exe src/main/pbrt.cpp )
 ADD_SANITIZERS ( pbrt_exe )
 
 SET_TARGET_PROPERTIES ( pbrt_exe PROPERTIES OUTPUT_NAME pbrt )
-TARGET_COMPILE_FEATURES ( pbrt_exe PRIVATE ${PBRT_CXX11_FEATURES} )
+TARGET_COMPILE_FEATURES ( pbrt_exe PRIVATE ${PBRT_CXX14_FEATURES} )
 TARGET_LINK_LIBRARIES ( pbrt_exe ${ALL_PBRT_LIBS} )
+# update for pytorch
+# SET_PROPERTY (TARGET pbrt_exe PROPERTY CXX_STANDARD 14)
 
 # Tools
 ADD_EXECUTABLE ( bsdftest src/tools/bsdftest.cpp )
 ADD_SANITIZERS ( bsdftest )
-TARGET_COMPILE_FEATURES ( bsdftest PRIVATE ${PBRT_CXX11_FEATURES} )
+TARGET_COMPILE_FEATURES ( bsdftest PRIVATE ${PBRT_CXX14_FEATURES} )
 TARGET_LINK_LIBRARIES ( bsdftest ${ALL_PBRT_LIBS} )
 
 ADD_EXECUTABLE ( imgtool src/tools/imgtool.cpp )
 ADD_SANITIZERS ( imgtool )
-TARGET_COMPILE_FEATURES ( imgtool PRIVATE ${PBRT_CXX11_FEATURES} )
+TARGET_COMPILE_FEATURES ( imgtool PRIVATE ${PBRT_CXX14_FEATURES} )
 TARGET_LINK_LIBRARIES ( imgtool ${ALL_PBRT_LIBS} )
 
 ADD_EXECUTABLE ( obj2pbrt src/tools/obj2pbrt.cpp )
-TARGET_COMPILE_FEATURES ( obj2pbrt PRIVATE ${PBRT_CXX11_FEATURES} )
+TARGET_COMPILE_FEATURES ( obj2pbrt PRIVATE ${PBRT_CXX14_FEATURES} )
 ADD_SANITIZERS ( obj2pbrt )
 
 ADD_EXECUTABLE ( cyhair2pbrt src/tools/cyhair2pbrt.cpp )
 ADD_SANITIZERS ( cyhair2pbrt )
+
 
 # Unit test
 
@@ -553,7 +563,7 @@ FILE ( GLOB PBRT_TEST_SOURCE
 
 ADD_EXECUTABLE ( pbrt_test ${PBRT_TEST_SOURCE} )
 ADD_SANITIZERS ( pbrt_test )
-TARGET_COMPILE_FEATURES ( pbrt_test PRIVATE ${PBRT_CXX11_FEATURES} )
+TARGET_COMPILE_FEATURES ( pbrt_test PRIVATE ${PBRT_CXX14_FEATURES} )
 TARGET_LINK_LIBRARIES ( pbrt_test ${ALL_PBRT_LIBS} )
 
 ADD_TEST ( pbrt_unit_test pbrt_test )
@@ -575,3 +585,4 @@ INSTALL ( TARGETS
   DESTINATION
   lib
   )
+  

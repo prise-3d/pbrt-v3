@@ -49,6 +49,14 @@
 #include "imageio.h"
 #include <sys/stat.h>
 
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+#include <torch/script.h> // One-stop header.
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
+
 namespace pbrt {
 
 // FilmTilePixel Declarations
@@ -69,6 +77,15 @@ class Film {
     Bounds2f GetPhysicalExtent() const;
     std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
     void MergeFilmTile(std::unique_ptr<FilmTile> tile);
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    void ApplyDL(FilmTile* tile, torch::jit::script::Module module);
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
+    
     void SetImage(const Spectrum *img) const;
     //////////////////////
     // PrISE-3D Updates //
@@ -77,6 +94,7 @@ class Film {
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
+
     void AddSplat(const Point2f &p, Spectrum v);
     void WriteImage(Float splatScale = 1);
 
@@ -124,7 +142,7 @@ class Film {
         Float pad;
     };
     std::unique_ptr<Pixel[]> pixels;
-    static PBRT_CONSTEXPR int filterTableWidth = 16;
+    static PBRT_CONSTEXPR int filterTableWidth = 32; // TODO check if really 32 ?
     Float filterTable[filterTableWidth * filterTableWidth];
     std::mutex mutex;
     const Float scale;
@@ -173,6 +191,7 @@ class Film {
 
 class FilmTile {
   public:
+
     // FilmTile Public Methods
     FilmTile(const Bounds2i &pixelBounds, const Vector2f &filterRadius,
              const Float *filterTable, int filterTableSize,

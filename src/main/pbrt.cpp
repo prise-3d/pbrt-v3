@@ -185,6 +185,12 @@ int main(int argc, char *argv[]) {
                 return 0;
             }
         }
+        else if (!strcmp(argv[i], "--model_path") || !strcmp(argv[i], "-model_path")) {
+             if (i + 1 == argc)
+                 usage("missing value after --model_path argument");
+            options.model_path = argv[++i];
+
+        }
         //////////////////////////
         // End PrISE-3D Updates //
         //////////////////////////

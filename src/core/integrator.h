@@ -47,6 +47,14 @@
 #include "sampler.h"
 #include "material.h"
 
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+#include <torch/script.h> // One-stop header.
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
+
 namespace pbrt {
 
 // Integrator Declarations

@@ -234,6 +234,24 @@ void SamplerIntegrator::Render(const Scene &scene) {
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
+
+    torch::jit::script::Module moduleModel;
+
+    // first load model if exists (passed as parameter)
+    if (PbrtOptions.model_path.length() > 0){
+        // try to load pytorch model
+
+        try {
+            // Deserialize the ScriptModule from a file using torch::jit::load().
+            moduleModel = torch::jit::load(PbrtOptions.model_path.c_str());
+            PbrtOptions.useOfDLModel = true;
+            std::cout << "Load of DL pytorch model " << PbrtOptions.model_path << " done.." << std::endl;
+        }
+        catch (const c10::Error& e) {
+            std::cerr << "error loading the model\n";
+        }
+    }
+
     srand(time(0));
     uint64_t seed=0;
     uint64_t numberOfSamples = PbrtOptions.samples; // get number of samples expected by the renderer by image
@@ -257,7 +275,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
         Point2i fullResolution =  camera->film->fullResolution;
 
         Vector2i sampleExtent = sampleBounds.Diagonal();
-        const int tileSize = 16;
+        const int tileSize = 32;
         Point2i nTiles((sampleExtent.x + tileSize - 1) / tileSize,
                     (sampleExtent.y + tileSize - 1) / tileSize);
         ProgressReporter reporter(nTiles.x * nTiles.y, "Rendering");
@@ -287,21 +305,24 @@ void SamplerIntegrator::Render(const Scene &scene) {
                 std::unique_ptr<FilmTile> filmTile =
                     camera->film->GetFilmTile(tileBounds);
 
-                // Loop over pixels in tile to render them
-                for (Point2i pixel : tileBounds) {
-                    {
-                        ProfilePhase pp(Prof::StartPixel);
-                        tileSampler->StartPixel(pixel);
-                    }
 
-                    // Do this check after the StartPixel() call; this keeps
-                    // the usage of RNG values from (most) Samplers that use
-                    // RNGs consistent, which improves reproducability /
-                    // debugging.
-                    if (!InsideExclusive(pixel, pixelBounds))
-                        continue;
+                // change the way of computed tile (here 1 spp per 1 spp)
+                for (int j = 0; j < PbrtOptions.samples; j++){
 
-                    do {
+                    // Loop over pixels in tile to render them
+                    for (Point2i pixel : tileBounds) {
+                        {
+                            ProfilePhase pp(Prof::StartPixel);
+                            tileSampler->StartPixel(pixel);
+                        }
+
+                        // Do this check after the StartPixel() call; this keeps
+                        // the usage of RNG values from (most) Samplers that use
+                        // RNGs consistent, which improves reproducability /
+                        // debugging.
+                        if (!InsideExclusive(pixel, pixelBounds))
+                            continue;
+
                         // Initialize _CameraSample_ for current sample
                         CameraSample cameraSample =
                             tileSampler->GetCameraSample(pixel);
@@ -349,7 +370,10 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         //////////////////////
                         // PrISE-3D Updates //
                         //////////////////////
-                        if ((PbrtOptions.zbuffer || PbrtOptions.normals) && i == startImagesIndex){
+
+                        // always update buffer and normals information for first image
+                        // if ((PbrtOptions.zbuffer || PbrtOptions.normals) && i == startImagesIndex){
+                        if (i == startImagesIndex && j == 0){
 
                             // only if current pixel is in output image resolution
                             if ((pixel.x > 0 && pixel.x < fullResolution.x) && (pixel.y > 0 && pixel.y < fullResolution.y)){
@@ -361,6 +385,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
                                 camera->film->UpdateAdditionals(pixel, ray);
                             }
                         }
+
                         //////////////////////////
                         // End PrISE-3D Updates //
                         //////////////////////////
@@ -370,12 +395,28 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         // Free _MemoryArena_ memory from computing image sample
                         // value
                         arena.Reset();
-                    } while (tileSampler->StartNextSample());
+                    }
+
+                    //////////////////////
+                    // PrISE-3D Updates //
+                    //////////////////////
+                    if (PbrtOptions.useOfDLModel){
+                    
+                        // check number of samples for this tile
+                        if (j % PbrtOptions.runDLEvery == 0 && j >= PbrtOptions.runDLEvery){
+                            std::cout << "Use of pytorch denoising model after " << j << " samples" << std::endl;
+                            camera->film->ApplyDL(filmTile.get(), moduleModel);
+                        }
+                    }
+                    //////////////////////////
+                    // End PrISE-3D Updates //
+                    //////////////////////////
                 }
                 LOG(INFO) << "Finished image tile " << tileBounds;
 
                 // Merge image tile into _Film_
                 camera->film->MergeFilmTile(std::move(filmTile));
+                
                 reporter.Update();
             }, nTiles);
             reporter.Done();

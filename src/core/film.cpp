@@ -37,6 +37,7 @@
 #include "imageio.h"
 #include "stats.h"
 #include <fstream>
+#include <bits/stdc++.h> 
 
 namespace pbrt {
 
@@ -148,7 +149,7 @@ void Film::LoadRawlsImage(const std::string filename) const {
 
         for(unsigned x = 0; x < width; x++) {
 
-            for(int j = 0; j < nbChanels; j++){
+            for(unsigned j = 0; j < nbChanels; j++){
                 rf.read((char *) &chanelValue, sizeof(float));  
                 
                 buffer[nbChanels * width * y + nbChanels * x + j] = chanelValue; 
@@ -233,6 +234,143 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
         mergePixel.filterWeightSum += tilePixel.filterWeightSum;
     }
 }
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+void Film::ApplyDL(FilmTile* tile, torch::jit::script::Module module) {
+
+    ProfilePhase p(Prof::MergeFilmTile);
+    VLOG(1) << "Apply DL and merge film tile" << tile->pixelBounds << " using " << PbrtOptions.DLConfidence << "%";
+    std::lock_guard<std::mutex> lock(mutex);
+
+    // build model input
+    // expected (1, 7, 32, 32)
+    // 1. mean pixel values (preprocessing: log + normalization)
+    // 2. normals values (preprocessing: normalization)
+    // 3. zbuffer values (preprocessing: normalization)
+
+    // check tile size
+    int nChannels = 7;
+    int tileSize = 32;
+    int nChannelValues = tileSize * tileSize;
+
+    Bounds2i bounds = tile->GetPixelBounds();
+
+    int widthExtra = (bounds[1].x - bounds[0].x) % tileSize;
+    int heightExtra = (bounds[1].y - bounds[0].y) % tileSize;
+
+    int widthBounds = (int)(widthExtra / 2);
+    int heightBounds = (int)(heightExtra / 2);
+
+    std::vector<float> inputValues(nChannels * nChannelValues);
+    std::cout << "Input values " << nChannels * nChannelValues << std::endl;
+
+    // store max values for mean input and zBuffer
+    Float maxLogXYZ = 0;
+    Float maxZbuffer = 0;
+
+    int pixelCounter = 0;
+    double epsilon = std::numeric_limits<double>::epsilon();
+
+    // extract input model data
+    for (Point2i pixel : tile->GetPixelBounds()) {
+        
+        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
+        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
+            continue;
+
+        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
+            continue;
+
+        // Merge _pixel_ into _Film::pixels_
+        const FilmTilePixel &tilePixel = tile->GetPixel(pixel);
+        Pixel &mergePixel = GetPixel(pixel);
+        Normal3f &normal = GetNormalPoint(pixel);
+        Float &bufferPoint = GetBufferPoint(pixel);
+
+        Float xyz[3];
+        tilePixel.contribSum.ToXYZ(xyz);
+
+        // fill XYZ values
+        Float filterSum = mergePixel.filterWeightSum + tilePixel.filterWeightSum;
+
+        for (int i = 0; i < 3; ++i){
+            // normalize channel and apply log on it
+            Float currentChannel = (float)(log10((mergePixel.xyz[i] + xyz[i] + epsilon) / filterSum));
+            inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
+            
+            if (currentChannel > maxLogXYZ){
+                maxLogXYZ = currentChannel;
+            }
+        }
+        
+        // fill normal values and normalize
+        inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
+        inputValues.at(pixelCounter + 4 * nChannelValues) = (float)((normal.y + 1) * 0.5);
+        inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
+
+        // fill zBuffer value
+        inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint);
+
+        pixelCounter++;
+    }
+
+    // normalize model input data if necessary
+    pixelCounter = 0;
+
+    for (Point2i pixel : tile->GetPixelBounds()) {
+
+        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
+        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
+            continue;
+
+        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
+            continue;
+
+        for (int i = 0; i < 3; ++i){
+            // normalize channel and apply log on it
+            inputValues.at(pixelCounter + i * nChannelValues) /= ((float)maxLogXYZ);
+        }
+
+        // normalize zBuffer value
+        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)maxZbuffer);
+
+        pixelCounter++;
+    }
+
+    // Create a vector of inputs for load model
+    std::vector<torch::jit::IValue> inputs;
+    
+    auto inputData = torch::tensor(inputValues);
+    auto inputDataReshaped = inputData.view({1, nChannels, tileSize, tileSize});
+  
+    // add input data to input IValue vector for model
+    inputs.push_back(inputDataReshaped);
+
+    // Execute the model and turn its output into a tensor.
+    at::Tensor output = module.forward(inputs).toTensor();
+
+    // Read output data
+    std::vector<float> xv;
+    
+    size_t x_size = output.numel();
+
+    // reading output data from buffer
+    auto outputData = static_cast<float*>(output.data_ptr<float>());
+    for(size_t i = 0; i < x_size; i++)
+    {
+      xv.push_back(outputData[i]);
+    }
+
+    // TODO :
+    // renormalize (normalization * maxLog + exp) output model data
+    // affects model data with percent of confidence
+    // reinit filterWidth after applying output on film normalization
+}
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 void Film::SetImage(const Spectrum *img) const {
     int nPixels = croppedPixelBounds.Area();
