@@ -36,6 +36,8 @@
 #include "paramset.h"
 #include "imageio.h"
 #include "stats.h"
+#include <fstream>
+#include <bits/stdc++.h> 
 
 namespace pbrt {
 
@@ -68,7 +70,11 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
     // PrISE-3D Updates //
     //////////////////////
     zbuffer = std::unique_ptr<Float[]>(new Float[croppedPixelBounds.Area()]);
-    normals = std::unique_ptr<Normal3f[]>(new Normal3f[croppedPixelBounds.Area()]);
+    normals = std::unique_ptr<Normal3f[]>(new Normal3f[croppedPixelBounds.Area()]); 
+
+    for (int i = 0; i < croppedPixelBounds.Area(); ++i){
+        zbuffer[i] = 0; // default value
+    }
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -86,6 +92,96 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
         }
     }
 }
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+void Film::LoadRawlsImage(const std::string filename) const {
+
+    // only one read buffer used for the whole function
+    std::ifstream rf(filename, std::ios::out | std::ios::binary);
+
+    if(!rf) {
+      std::cout << "Cannot open file!" << std::endl;
+    }
+
+    std::string line; 
+    unsigned nbChanels, width, height;
+    char c; // to get space of new line char
+
+    // READ IHDR info
+    bool ihdrBegin = false;
+
+    while (!ihdrBegin && std::getline(rf, line)) { 
+
+        if (line.find(std::string("IHDR")) != std::string::npos){
+            ihdrBegin = true;
+            std::getline(rf, line); // avoid data size line
+
+            rf.read((char *) &width, sizeof(unsigned));
+            rf.get(c);
+            rf.read((char *) &height, sizeof(unsigned));
+            rf.get(c);
+            rf.read((char *) &nbChanels, sizeof(unsigned));
+            rf.get(c);
+        }
+    }
+
+    bool dataBegin = false;
+
+    // READ DATA info
+    // case of data chunck begin
+    while (!dataBegin && std::getline(rf, line)) { 
+
+        if (line.find(std::string("DATA")) != std::string::npos){
+            dataBegin = true;
+        }
+    }
+
+    // resize buffer if necessary
+    float* buffer = new float[height * width * nbChanels];
+
+    std::getline(rf, line);
+    unsigned size = std::stoi(line);
+    float chanelValue;
+
+    for(unsigned y = 0; y < height; y++){
+
+        for(unsigned x = 0; x < width; x++) {
+
+            for(unsigned j = 0; j < nbChanels; j++){
+                rf.read((char *) &chanelValue, sizeof(float));  
+                
+                buffer[nbChanels * width * y + nbChanels * x + j] = chanelValue; 
+            } 
+
+            // go to next line
+            rf.get(c);
+        }
+    }
+
+    rf.close();
+
+    if(!rf.good()) {
+        std::cout << "Error occurred at writing time!" << std::endl;
+    }
+
+    // for each values into buffer set current film buffer
+    int nPixels = croppedPixelBounds.Area();
+    int offset = 0;
+
+    for (int i = 0; i < nPixels; ++i) {
+        Pixel &p = pixels[i];
+        p.xyz[0] = buffer[offset];
+        p.xyz[1] = buffer[offset + 1];
+        p.xyz[2] = buffer[offset + 2];
+
+        offset++;
+    }
+}
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 Bounds2i Film::GetSampleBounds() const {
     Bounds2f floatBounds(Floor(Point2f(croppedPixelBounds.pMin) +
@@ -109,10 +205,38 @@ std::unique_ptr<FilmTile> Film::GetFilmTile(const Bounds2i &sampleBounds) {
     Point2i p0 = (Point2i)Ceil(floatBounds.pMin - halfPixel - filter->radius);
     Point2i p1 = (Point2i)Floor(floatBounds.pMax - halfPixel + filter->radius) +
                  Point2i(1, 1);
+
     Bounds2i tilePixelBounds = Intersect(Bounds2i(p0, p1), croppedPixelBounds);
-    return std::unique_ptr<FilmTile>(new FilmTile(
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    auto filmTile = std::unique_ptr<FilmTile>(new FilmTile(
         tilePixelBounds, filter->radius, filterTable, filterTableWidth,
         maxSampleLuminance));
+
+    // // if use of model, set it
+    // if (PbrtOptions.useOfDLModel){
+
+    //     try {
+    //         // Deserialize the ScriptModule from a file using torch::jit::load().
+
+    //         torch::jit::script::Module DLModule; 
+    //         DLModule = torch::jit::load(PbrtOptions.model_path.c_str());
+            
+    //         // now associate this module to Tile
+    //         filmTile->module = std::unique_ptr<torch::jit::script::Module>(new torch::jit::script::Module(DLModule));
+    //     }
+    //     catch (const c10::Error& e) {
+    //         std::cerr << "error loading the model\n";
+    //     }
+
+    // }
+
+    return filmTile;
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 }
 
 void Film::Clear() {
@@ -138,6 +262,277 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
         mergePixel.filterWeightSum += tilePixel.filterWeightSum;
     }
 }
+
+//////////////////////
+// PrISE-3D Updates //
+//////////////////////
+Float Film::getMaxZBuffer(){
+
+    // TODO : To improve...
+    Float maxZBuffer = 0;
+
+    for (int i = 0; i < croppedPixelBounds.Area(); i++){
+        if (maxZBuffer < zbuffer[i]){
+            maxZBuffer = Float(zbuffer[i]);
+        }
+    }
+
+    return maxZBuffer;
+};
+
+
+void Film::ApplyDL(FilmTile* tile) {
+
+    ProfilePhase p(Prof::MergeFilmTile);
+    VLOG(1) << "Apply DL and merge film tile" << tile->pixelBounds << " using " << PbrtOptions.DLConfidence << "%";
+    std::lock_guard<std::mutex> lock(mutex);
+
+    // build model input
+    // expected (1, 7, 32, 32)
+    // 1. mean pixel values [preprocessing: log + normalization ((x_i - min_Log(X))/(max_Log(X) - min_Log(X)))]
+    // 2. normals values [preprocessing: normalization ((x_i + 1) * 0.5)]
+    // 3. zbuffer values [preprocessing: normalization (x_i / max(X)) ]
+
+    // check tile size
+    int nChannels = 7;
+    int tileSize = 32;
+    int nChannelValues = tileSize * tileSize;
+
+    Bounds2i bounds = tile->GetPixelBounds();
+
+    int widthExtra = (bounds[1].x - bounds[0].x) % tileSize;
+    int heightExtra = (bounds[1].y - bounds[0].y) % tileSize;
+
+    int widthBounds = (int)(widthExtra / 2);
+    int heightBounds = (int)(heightExtra / 2);
+
+    std::vector<float> inputValues(nChannels * nChannelValues);
+
+    // store max values for mean input and zBuffer
+    float maxLogRGB = std::numeric_limits<float>::min();
+    float minLogRGB = std::numeric_limits<float>::max();
+    Float splatScale = 1.; // by default
+
+    int pixelCounter = 0;
+    double epsilon = std::numeric_limits<double>::epsilon();
+
+    // extract input model data
+    for (Point2i pixel : tile->GetPixelBounds()) {
+        
+        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
+        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
+            continue;
+
+        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
+            continue;
+
+        // Merge _pixel_ into _Film::pixels_
+        const FilmTilePixel &tilePixel = tile->GetPixel(pixel);
+        Pixel &mergePixel = GetPixel(pixel);
+        Normal3f &normal = GetNormalPoint(pixel);
+        Float &bufferPoint = GetBufferPoint(pixel);
+
+        // Begin RGB conversion process
+        // Check `Film::writeImage` for this process
+        Float xyz[3];
+        tilePixel.contribSum.ToXYZ(xyz); // convert spectrum to XYZ
+
+        // merge xyz values from current tile into film
+        for (int i = 0; i < 3; ++i){
+           mergePixel.xyz[i] += xyz[i];
+        }
+
+        // convert to RGB
+        Float rgb[3];
+        XYZToRGB(xyz, rgb);
+
+        // Normalize pixel with weight sum
+        mergePixel.filterWeightSum += tilePixel.filterWeightSum;
+
+        if (mergePixel.filterWeightSum != 0) {
+            Float invWt = (Float)1 / mergePixel.filterWeightSum;
+            rgb[0] = std::max((Float)0, rgb[0] * invWt);
+            rgb[1] = std::max((Float)0, rgb[1] * invWt);
+            rgb[2] = std::max((Float)0, rgb[2] * invWt);
+        }
+
+        // Add splat value at pixel
+        Float splatRGB[3];
+        Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
+                        mergePixel.splatXYZ[1], 
+                        mergePixel.splatXYZ[2]};
+
+        XYZToRGB(splatXYZ, splatRGB);
+
+        rgb[0] += splatScale * splatRGB[0];
+        rgb[1] += splatScale * splatRGB[1];
+        rgb[2] += splatScale * splatRGB[2];
+
+        // Scale pixel value by _scale_
+        rgb[0] *= scale;
+        rgb[1] *= scale;
+        rgb[2] *= scale;
+
+        // End RGB conversion process
+
+        // fill RGB values with expected preprocessing
+        for (int i = 0; i < 3; ++i){
+
+            // apply log on it (avoid negative values and -inf issue)
+            // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
+            
+            float currentChannel = (float)(log10(rgb[i] + 1));
+
+            if (pixel.x == 1 && pixel.y == 1){    
+                std::cout << "Input " << pixel << std::endl;
+                std::cout << "Before " << rgb[i] << " - After " << currentChannel << std::endl;
+            }
+
+            inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
+            
+            // store min and max information for normalization
+            if (currentChannel > maxLogRGB){
+                maxLogRGB = currentChannel;
+            }
+
+            if (currentChannel < minLogRGB){
+                minLogRGB = currentChannel;
+            }
+        }
+        
+        // fill normal values and normalize
+        inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
+        inputValues.at(pixelCounter + 4 * nChannelValues) = (float)((normal.y + 1) * 0.5);
+        inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
+
+        // fill zBuffer value
+        // std::cout << pixel << " " << bufferPoint << std::endl;
+        inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint);
+
+        pixelCounter++;
+    }
+
+    // normalize model input data if necessary
+    pixelCounter = 0;
+
+    for (Point2i pixel : tile->GetPixelBounds()) {
+
+        // reset pixel tile contribution (because we merged its value into film)
+        FilmTilePixel &tilePixel = tile->GetPixel(pixel);
+        tilePixel.contribSum = 0.f;
+        tilePixel.filterWeightSum = 0.f;
+
+        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
+        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
+            continue;
+
+        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
+            continue;
+
+        for (int i = 0; i < 3; ++i){
+            // normalize channel and apply log on it
+            inputValues.at(pixelCounter + i * nChannelValues) = (inputValues.at(pixelCounter + i * nChannelValues) - minLogRGB) / (maxLogRGB - minLogRGB);
+        }
+
+        // normalize zBuffer value
+        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)getMaxZBuffer());
+
+        pixelCounter++;
+    }
+
+    // TODO: check mean/zbuffer normalization (here based on sample only, during training based on whole image)
+    // Update this part for training set ?
+
+    // Create a vector of inputs for load model
+    std::vector<torch::jit::IValue> inputs;
+    
+    auto tensData = torch::tensor(inputValues);
+    auto tensDataReshaped = tensData.view({1, nChannels, tileSize, tileSize});
+
+    inputs.push_back(tensDataReshaped);
+
+    // Execute the model and turn its output into a tensor.
+    at::Tensor output = tile->module->forward(inputs).toTensor();
+
+    // Read output data
+    std::vector<float> xv;
+    
+    size_t x_size = output.numel();
+
+    // reading output data from buffer
+    auto outputData = static_cast<float*>(output.data_ptr<float>());
+    for(size_t i = 0; i < x_size; i++)
+    {
+      xv.push_back(outputData[i]);
+    }
+
+    pixelCounter = 0;
+    // renormalize (normalization * maxLog + exp) output model data
+    // extract input model data
+    for (Point2i pixel : tile->GetPixelBounds()) {
+        
+        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
+        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
+            continue;
+
+        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
+            continue;
+
+        // Merge _pixel_ into _Film::pixels_
+        const FilmTilePixel &tilePixel = tile->GetPixel(pixel);
+        Pixel &mergePixel = GetPixel(pixel);
+
+        Float rgbValues[3];
+
+        Float splatRGB[3];
+        Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
+                        mergePixel.splatXYZ[1], 
+                        mergePixel.splatXYZ[2]};
+        XYZToRGB(splatXYZ, splatRGB);
+
+        for (int i = 0; i < 3; ++i){
+
+            // reverse normalization
+            // y = x_i * (max(X) - min(X)) + min(X)
+            rgbValues[i] = xv.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
+
+            // reverse log10 function (and remove 1 which was added to log function previously)
+            rgbValues[i] = pow(10, rgbValues[i]) - 1;
+
+            //std::cout << rgbValues[i] << std::endl;
+
+            if (pixel.x == 1 && pixel.y == 1){    
+                std::cout << "Input " << pixel << std::endl;
+                std::cout << "Before " << xv.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
+            }
+            
+            // reverse scale
+            // Scale pixel value by _scale_
+            rgbValues[i] /= scale;
+
+            // reverse splat scale
+            rgbValues[i] -= splatScale * splatRGB[i];
+
+            // rescale based on sum weight contribution
+            rgbValues[i] *= mergePixel.filterWeightSum;
+        }
+
+        // convert to XYZ
+        Float xyzValues[3];
+        RGBToXYZ(rgbValues, xyzValues);
+
+        // merge final values using weighted sum
+        // affects model data with percent of confidence
+        for (int i = 0; i < 3; ++i){
+            mergePixel.xyz[i] =  mergePixel.xyz[i] * (1. - PbrtOptions.DLConfidence) + xyzValues[i] * PbrtOptions.DLConfidence;
+        }
+        
+        pixelCounter++;
+    }
+}
+//////////////////////////
+// End PrISE-3D Updates //
+//////////////////////////
 
 void Film::SetImage(const Spectrum *img) const {
     int nPixels = croppedPixelBounds.Area();
@@ -297,13 +692,28 @@ void Film::WriteImageTemp(int index, Float splatScale) {
 
         std::unique_ptr<Float[]> zbufferFloat(new Float[croppedPixelBounds.Area()]);
         int offset = 0;
+
+        Float maxValue = Float(0.);
+
         for (Point2i p : croppedPixelBounds) {
             // Convert pixel XYZ color to RGB
             Float &bufferPoint = GetBufferPoint(p);
 
+            if (bufferPoint > maxValue && bufferPoint != Infinity){
+                maxValue = Float(bufferPoint);
+            }
+
             // Scale pixel value by _scale_
             zbufferFloat[offset] = bufferPoint;
             ++offset;
+        }
+
+        // for each Infinity value update value using max current value of zbuffer
+        for(int i = 0; i < croppedPixelBounds.Area(); ++i){
+
+            if (zbufferFloat[i] == Infinity){
+                zbufferFloat[i] = Float(maxValue);
+            }
         }
 
         pbrt::WriteImage(zbuffer_filename, &zbufferFloat[0], croppedPixelBounds, fullResolution, 1);
@@ -320,9 +730,9 @@ void Film::WriteImageTemp(int index, Float splatScale) {
             Normal3f &normal = GetNormalPoint(p);
 
             // Scale pixel value by _scale_
-            normalsFloat[3 * offset] = normal.x;
-            normalsFloat[3 * offset + 1] = normal.y;
-            normalsFloat[3 * offset + 2] = normal.z;
+            normalsFloat[3 * offset] = (normal.x + 1) * 0.5;
+            normalsFloat[3 * offset + 1] = (normal.y + 1) * 0.5;
+            normalsFloat[3 * offset + 2] = (normal.z + 1) * 0.5;
             ++offset;
         }
 
