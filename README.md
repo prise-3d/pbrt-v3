@@ -31,14 +31,10 @@ $ git submodule update --init --recursive
 
 ### Makefile builds (Linux, other Unixes, and Mac) ###
 
-Install procedure with libtorch:
 ```
-wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.4.0%2Bcpu.zip
-unzip libtorch-cxx11-abi-shared-with-deps-1.4.0+cpu.zip
-
 mkdir build
 cd build
-cmake -DCMAKE_PREFIX_PATH=../libtorch ..
+cmake ..
 make -j
 ```
 
@@ -60,9 +56,7 @@ cd build
 - *--digit*: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
 - *--normals*: boolean which specifies if normals map is saved after generating first image
 - *--zbuffer*: boolean which specifies if Z-Buffer is saved after generating first image
-- *--model_path*: pytorch model to use (need `.pt` file), follow this [tutorial](https://pytorch.org/tutorials/advanced/cpp_export.html) to extract your model.
-
-Python script convertion for pytorch model is available here [script](https://github.com/prise-3d/DL-AAN/blob/master/autoencoder_convert.py) and an c++ example [project](https://github.com/prise-3d/DL-AAN/tree/master/cppexample) is also available.
+- *--nn_model*: nn model python script path.
 
 **Output information:**
 

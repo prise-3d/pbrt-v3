@@ -75,6 +75,22 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
     for (int i = 0; i < croppedPixelBounds.Area(); ++i){
         zbuffer[i] = 0; // default value
     }
+
+    // initialize child process
+    if (PbrtOptions.nn_path.length() > 0){
+        char *const argv[] = {
+            const_cast<char*>("python"),
+            const_cast<char*>(PbrtOptions.nn_path.c_str()),
+            NULL
+        };
+
+        child_process = std::unique_ptr<ChildProcess>(
+                    new ChildProcess(
+                        std::string("python"),
+                        argv
+                        )
+                    );
+    }
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -208,35 +224,9 @@ std::unique_ptr<FilmTile> Film::GetFilmTile(const Bounds2i &sampleBounds) {
 
     Bounds2i tilePixelBounds = Intersect(Bounds2i(p0, p1), croppedPixelBounds);
 
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    auto filmTile = std::unique_ptr<FilmTile>(new FilmTile(
+    return std::unique_ptr<FilmTile>(new FilmTile(
         tilePixelBounds, filter->radius, filterTable, filterTableWidth,
         maxSampleLuminance));
-
-    // // if use of model, set it
-    if (PbrtOptions.useOfDLModel){
-
-        try {
-            // Deserialize the ScriptModule from a file using torch::jit::load().
-
-            torch::jit::script::Module DLModule; 
-            DLModule = torch::jit::load(PbrtOptions.model_path.c_str());
-            
-            // now associate this module to Tile
-            filmTile->module = std::unique_ptr<torch::jit::script::Module>(new torch::jit::script::Module(DLModule));
-        }
-        catch (const c10::Error& e) {
-            std::cerr << "error loading the model\n";
-        }
-
-    }
-
-    return filmTile;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
 }
 
 void Film::Clear() {
@@ -272,7 +262,7 @@ Float Film::getMaxZBuffer(){
     Float maxZBuffer = 0;
 
     for (int i = 0; i < croppedPixelBounds.Area(); i++){
-        if (maxZBuffer < zbuffer[i]){
+        if (zbuffer[i] > maxZBuffer && zbuffer[i] != Infinity){
             maxZBuffer = Float(zbuffer[i]);
         }
     }
@@ -297,6 +287,7 @@ void Film::ApplyDL(FilmTile* tile) {
     int nChannels = 7;
     int tileSize = 32;
     int nChannelValues = tileSize * tileSize;
+    unsigned nValues = nChannels * nChannelValues;
 
     Bounds2i bounds = tile->GetPixelBounds();
 
@@ -306,7 +297,7 @@ void Film::ApplyDL(FilmTile* tile) {
     int widthBounds = (int)(widthExtra / 2);
     int heightBounds = (int)(heightExtra / 2);
 
-    std::vector<float> inputValues(nChannels * nChannelValues);
+    std::vector<float> inputValues(nValues);
 
     // store max values for mean input and zBuffer
     float maxLogRGB = std::numeric_limits<float>::min();
@@ -315,6 +306,10 @@ void Film::ApplyDL(FilmTile* tile) {
 
     int pixelCounter = 0;
     double epsilon = std::numeric_limits<double>::epsilon();
+
+    // get Max Z buffer information data
+    Float maxZBuffer = getMaxZBuffer();
+    //Float currentMaxZbuffer = std::numeric_limits<float>::min();
 
     // extract input model data
     for (Point2i pixel : tile->GetPixelBounds()) {
@@ -408,8 +403,14 @@ void Film::ApplyDL(FilmTile* tile) {
         // std::cout << pixel << " " << bufferPoint << std::endl;
         inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint);
 
+        // if (bufferPoint > currentMaxZbuffer){
+        //     currentMaxZbuffer = Float(bufferPoint);
+        // }
+
         pixelCounter++;
     }
+
+    //std::cout << "Global " << maxZBuffer << " vs. " << currentMaxZbuffer << std::endl;
 
     // normalize model input data if necessary
     pixelCounter = 0;
@@ -434,35 +435,35 @@ void Film::ApplyDL(FilmTile* tile) {
         }
 
         // normalize zBuffer value
-        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)getMaxZBuffer());
+        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)maxZBuffer);
 
         pixelCounter++;
     }
 
+    child_process->write_n_float32(&inputValues[0], nValues);
+
     // TODO: check mean/zbuffer normalization (here based on sample only, during training based on whole image)
     // Update this part for training set ?
 
-    // Create a vector of inputs for load model
-    std::vector<torch::jit::IValue> inputs;
-    
-    auto tensData = torch::tensor(inputValues);
-    auto tensDataReshaped = tensData.view({1, nChannels, tileSize, tileSize});
+    unsigned status = 0;
+    unsigned nOutputValues = nChannelValues * 3;
 
-    inputs.push_back(tensDataReshaped);
+    std::vector<float> output_array(nOutputValues);
 
-    // Execute the model and turn its output into a tensor.
-    at::Tensor output = tile->module->forward(inputs).toTensor();
+    // Read
+    int code = child_process->read_n_float32(&output_array[0], nOutputValues);
+    if (code) {
+        std::cerr << "film.cpp: Error when reading float array" << std::endl;
+    }
 
-    // Read output data
-    std::vector<float> xv;
-    
-    size_t x_size = output.numel();
-
-    // reading output data from buffer
-    auto outputData = static_cast<float*>(output.data_ptr<float>());
-    for(size_t i = 0; i < x_size; i++)
-    {
-      xv.push_back(outputData[i]);
+    // Check magic characters
+    char c0 = child_process->read_char();
+    char c1 = child_process->read_char();
+    if (c0 == 'x' && c1 == '\n') {
+        status = 0;
+    } else {
+        std::cerr << "film.cpp: magic characters don't match: ["<< c0 <<"] ["<< c1 <<"]" << std::endl;
+        status = 1;
     }
 
     pixelCounter = 0;
@@ -493,7 +494,7 @@ void Film::ApplyDL(FilmTile* tile) {
 
             // reverse normalization
             // y = x_i * (max(X) - min(X)) + min(X)
-            rgbValues[i] = xv.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
+            rgbValues[i] = output_array.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
 
             // reverse log10 function (and remove 1 which was added to log function previously)
             rgbValues[i] = pow(10, rgbValues[i]) - 1;
@@ -501,7 +502,7 @@ void Film::ApplyDL(FilmTile* tile) {
             //std::cout << rgbValues[i] << std::endl;
 
             // if (pixel.x == 1 && pixel.y == 1){    
-            //     std::cout << "Output => Before " << xv.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
+            //     std::cout << "Output => Before " << output_array.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
             // }
             
             // reverse scale
