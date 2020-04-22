@@ -271,10 +271,9 @@ Float Film::getMaxZBuffer(){
 };
 
 
-void Film::ApplyDL(FilmTile* tile) {
+void Film::ApplyDL() {
 
-    ProfilePhase p(Prof::MergeFilmTile);
-    VLOG(1) << "Apply DL and merge film tile" << tile->pixelBounds << " using " << PbrtOptions.DLConfidence << "%";
+    VLOG(1) << "Apply DL and merge film on tiles using " << PbrtOptions.DLConfidence << "%";
     std::lock_guard<std::mutex> lock(mutex);
 
     // build model input
@@ -285,248 +284,233 @@ void Film::ApplyDL(FilmTile* tile) {
 
     // check tile size
     int nChannels = 7;
-    int tileSize = 32;
-    int nChannelValues = tileSize * tileSize;
+    int hSize = 32;
+    int wSize = 32;
+    int nChannelValues = hSize * wSize;
     unsigned nValues = nChannels * nChannelValues;
-
-    Bounds2i bounds = tile->GetPixelBounds();
-
-    int widthExtra = (bounds[1].x - bounds[0].x) % tileSize;
-    int heightExtra = (bounds[1].y - bounds[0].y) % tileSize;
-
-    int widthBounds = (int)(widthExtra / 2);
-    int heightBounds = (int)(heightExtra / 2);
-
-    std::vector<float> inputValues(nValues);
-
-    // store max values for mean input and zBuffer
-    float maxLogRGB = std::numeric_limits<float>::min();
-    float minLogRGB = std::numeric_limits<float>::max();
-    Float splatScale = 1.; // by default
-
-    int pixelCounter = 0;
-    double epsilon = std::numeric_limits<double>::epsilon();
 
     // get Max Z buffer information data
     Float maxZBuffer = getMaxZBuffer();
-    //Float currentMaxZbuffer = std::numeric_limits<float>::min();
+    Float splatScale = 1.; // by default
 
-    // extract input model data
-    for (Point2i pixel : tile->GetPixelBounds()) {
-        
-        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
-        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
-            continue;
+    unsigned nWeightTiles = ceil(fullResolution.x / wSize); 
+    unsigned nHeightTiles = ceil(fullResolution.y / hSize);
 
-        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
-            continue;
+    std::cout << nWeightTiles << ", " << nHeightTiles << std::endl;
 
-        // Merge _pixel_ into _Film::pixels_
-        const FilmTilePixel &tilePixel = tile->GetPixel(pixel);
-        Pixel &mergePixel = GetPixel(pixel);
-        Normal3f &normal = GetNormalPoint(pixel);
-        Float &bufferPoint = GetBufferPoint(pixel);
+    // for each tile found
+    for (int i = 0; i < nWeightTiles; i++){
 
-        // Begin RGB conversion process
-        // Check `Film::writeImage` for this process
-        Float xyz[3];
-        tilePixel.contribSum.ToXYZ(xyz); // convert spectrum to XYZ
+        for (int j = 0; j < nHeightTiles; j++){
 
-        // merge xyz values from current tile into film
-        for (int i = 0; i < 3; ++i){
-           mergePixel.xyz[i] += xyz[i];
-        }
+            unsigned wStart = i * wSize;
+            unsigned hStart = j * hSize;
 
-        // convert to RGB
-        Float rgb[3];
-        XYZToRGB(xyz, rgb);
+            unsigned finalWStart = wStart;
+            unsigned finalHStart = hStart;
 
-        // Normalize pixel with weight sum
-        mergePixel.filterWeightSum += tilePixel.filterWeightSum;
+            unsigned wEnd = wStart + wSize;
+            unsigned hEnd = hStart + hSize;
 
-        if (mergePixel.filterWeightSum != 0) {
-            Float invWt = (Float)1 / mergePixel.filterWeightSum;
-            rgb[0] = std::max((Float)0, rgb[0] * invWt);
-            rgb[1] = std::max((Float)0, rgb[1] * invWt);
-            rgb[2] = std::max((Float)0, rgb[2] * invWt);
-        }
+            // check and avoid out of bounds
+            if (hEnd >= fullResolution.y && wEnd >= fullResolution.x){
 
-        // Add splat value at pixel
-        Float splatRGB[3];
-        Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
-                        mergePixel.splatXYZ[1], 
-                        mergePixel.splatXYZ[2]};
+                finalWStart = fullResolution.x - wSize;
+                finalHStart = fullResolution.y - hSize;
+            } else if (hEnd >= fullResolution.y){
 
-        XYZToRGB(splatXYZ, splatRGB);
-
-        rgb[0] += splatScale * splatRGB[0];
-        rgb[1] += splatScale * splatRGB[1];
-        rgb[2] += splatScale * splatRGB[2];
-
-        // Scale pixel value by _scale_
-        rgb[0] *= scale;
-        rgb[1] *= scale;
-        rgb[2] *= scale;
-
-        // End RGB conversion process
-
-        // fill RGB values with expected preprocessing
-        for (int i = 0; i < 3; ++i){
-
-            // apply log on it (avoid negative values and -inf issue)
-            // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
+                finalWStart = wStart;
+                finalHStart = fullResolution.y - hSize;
+            }else if (wEnd >= fullResolution.x){
+                
+                finalWStart = fullResolution.x - wSize;
+                finalHStart = hStart;
+            }
             
-            float currentChannel = (float)(log10(rgb[i] + 1));
+            // final valid tile end for each axis
+            wEnd = finalWStart + wSize;
+            hEnd = finalHStart + hSize;
 
-            // if (pixel.x == 1 && pixel.y == 1){    
-            //     std::cout << "Input => Before " << rgb[i] << " - After " << currentChannel << std::endl;
-            // }
+            // construct tile bounds based on this
+            Bounds2i tileBounds(Point2i(finalWStart, finalHStart), Point2i(wEnd, hEnd));
 
-            inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
-            
-            // store min and max information for normalization
-            if (currentChannel > maxLogRGB){
-                maxLogRGB = currentChannel;
+            // prepare input values
+            std::vector<float> inputValues(nValues);
+
+            // store max values for mean input and zBuffer
+            float maxLogRGB = std::numeric_limits<float>::min();
+            float minLogRGB = std::numeric_limits<float>::max();
+
+            int pixelCounter = 0;
+            double epsilon = std::numeric_limits<double>::epsilon();
+
+            // extract input model data
+            for (Point2i pixel : tileBounds) {
+                
+                // Merge _pixel_ into _Film::pixels_
+                Pixel &mergePixel = GetPixel(pixel);
+                Normal3f &normal = GetNormalPoint(pixel);
+                Float &bufferPoint = GetBufferPoint(pixel);
+
+                Float xyz[3];
+
+                for (int i = 0; i < 3; i++){
+                    xyz[i] = mergePixel.xyz[i];
+                }
+
+                // convert xyz to rgb values of current pixel
+                Float rgb[3];
+                XYZToRGB(xyz, rgb);
+
+                if (mergePixel.filterWeightSum != 0) {
+                    Float invWt = (Float)1 / mergePixel.filterWeightSum;
+                    rgb[0] = std::max((Float)0, rgb[0] * invWt);
+                    rgb[1] = std::max((Float)0, rgb[1] * invWt);
+                    rgb[2] = std::max((Float)0, rgb[2] * invWt);
+                }
+
+                // Add splat value at pixel
+                Float splatRGB[3];
+                Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
+                                mergePixel.splatXYZ[1], 
+                                mergePixel.splatXYZ[2]};
+
+                XYZToRGB(splatXYZ, splatRGB);
+
+                rgb[0] += splatScale * splatRGB[0];
+                rgb[1] += splatScale * splatRGB[1];
+                rgb[2] += splatScale * splatRGB[2];
+
+                // Scale pixel value by _scale_
+                rgb[0] *= scale;
+                rgb[1] *= scale;
+                rgb[2] *= scale;
+
+                // End RGB conversion process
+
+                // fill RGB values with expected preprocessing
+                for (int i = 0; i < 3; ++i){
+
+                    // apply log on it (avoid negative values and -inf issue)
+                    // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
+                    
+                    float currentChannel = (float)(log10(rgb[i] + 1));
+
+                    inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
+                    
+                    // store min and max information for normalization
+                    if (currentChannel > maxLogRGB){
+                        maxLogRGB = currentChannel;
+                    }
+
+                    if (currentChannel < minLogRGB){
+                        minLogRGB = currentChannel;
+                    }
+                }
+                
+                // fill normal values and normalize
+                inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
+                inputValues.at(pixelCounter + 4 * nChannelValues) = (float)((normal.y + 1) * 0.5);
+                inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
+
+                // fill zBuffer value
+                // normalize zBuffer value
+                inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint / maxZBuffer);
+
+                pixelCounter++;
             }
 
-            if (currentChannel < minLogRGB){
-                minLogRGB = currentChannel;
+            //std::cout << "Global " << maxZBuffer << " vs. " << currentMaxZbuffer << std::endl;
+
+            // normalize model input data if necessary
+            pixelCounter = 0;
+
+            for (Point2i pixel : tileBounds) {
+
+                for (int i = 0; i < 3; ++i){
+                    // normalize channel and apply log on it
+                    inputValues.at(pixelCounter + i * nChannelValues) = (inputValues.at(pixelCounter + i * nChannelValues) - minLogRGB) / (maxLogRGB - minLogRGB);
+                }
+
+                pixelCounter++;
+            }
+
+            child_process->write_n_float32(&inputValues[0], nValues);
+
+            // TODO: check mean/zbuffer normalization (here based on sample only, during training based on whole image)
+            // Update this part for training set ?
+
+            unsigned status = 0;
+            unsigned nOutputValues = nChannelValues * 3;
+
+            std::vector<float> output_array(nOutputValues);
+
+            // Read
+            int code = child_process->read_n_float32(&output_array[0], nOutputValues);
+            if (code) {
+                std::cerr << "film.cpp: Error when reading float array" << std::endl;
+            }
+
+            // Check magic characters
+            char c0 = child_process->read_char();
+            char c1 = child_process->read_char();
+            if (c0 == 'x' && c1 == '\n') {
+                status = 0;
+            } else {
+                std::cerr << "film.cpp: magic characters don't match: ["<< c0 <<"] ["<< c1 <<"]" << std::endl;
+                status = 1;
+            }
+
+            pixelCounter = 0;
+
+            // renormalize (normalization * maxLog + exp) output model data
+            // extract input model data
+            for (Point2i pixel : tileBounds) {
+
+                // Merge _pixel_ into _Film::pixels_
+                Pixel &mergePixel = GetPixel(pixel);
+
+                Float rgbValues[3];
+
+                Float splatRGB[3];
+                Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
+                                mergePixel.splatXYZ[1], 
+                                mergePixel.splatXYZ[2]};
+                XYZToRGB(splatXYZ, splatRGB);
+
+                for (int i = 0; i < 3; ++i){
+
+                    // reverse normalization
+                    // y = x_i * (max(X) - min(X)) + min(X)
+                    rgbValues[i] = output_array.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
+                    
+                    // reverse log10 function (and remove 1 which was added to log function previously)
+                    rgbValues[i] = pow(10, rgbValues[i]) - 1;
+
+                    // reverse scale
+                    // Scale pixel value by _scale_
+                    rgbValues[i] /= scale;
+
+                    // reverse splat scale
+                    rgbValues[i] -= splatScale * splatRGB[i];
+
+                    // rescale based on sum weight contribution
+                    rgbValues[i] *= mergePixel.filterWeightSum;
+                }
+
+                // convert to XYZ
+                Float xyzValues[3];
+                RGBToXYZ(rgbValues, xyzValues);
+
+                // merge final values using weighted sum
+                // affects model data with percent of confidence
+                for (int i = 0; i < 3; ++i){
+                    mergePixel.xyz[i] =  mergePixel.xyz[i] * (1. - PbrtOptions.DLConfidence) + xyzValues[i] * PbrtOptions.DLConfidence;
+                }
+                
+                pixelCounter++;
             }
         }
-        
-        // fill normal values and normalize
-        inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
-        inputValues.at(pixelCounter + 4 * nChannelValues) = (float)((normal.y + 1) * 0.5);
-        inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
-
-        // fill zBuffer value
-        // std::cout << pixel << " " << bufferPoint << std::endl;
-        inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint);
-
-        // if (bufferPoint > currentMaxZbuffer){
-        //     currentMaxZbuffer = Float(bufferPoint);
-        // }
-
-        pixelCounter++;
-    }
-
-    //std::cout << "Global " << maxZBuffer << " vs. " << currentMaxZbuffer << std::endl;
-
-    // normalize model input data if necessary
-    pixelCounter = 0;
-
-    for (Point2i pixel : tile->GetPixelBounds()) {
-
-        // reset pixel tile contribution (because we merged its value into film)
-        FilmTilePixel &tilePixel = tile->GetPixel(pixel);
-        tilePixel.contribSum = 0.f;
-        tilePixel.filterWeightSum = 0.f;
-
-        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
-        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
-            continue;
-
-        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
-            continue;
-
-        for (int i = 0; i < 3; ++i){
-            // normalize channel and apply log on it
-            inputValues.at(pixelCounter + i * nChannelValues) = (inputValues.at(pixelCounter + i * nChannelValues) - minLogRGB) / (maxLogRGB - minLogRGB);
-        }
-
-        // normalize zBuffer value
-        inputValues.at(pixelCounter + 6 * nChannelValues) /= ((float)maxZBuffer);
-
-        pixelCounter++;
-    }
-
-    child_process->write_n_float32(&inputValues[0], nValues);
-
-    // TODO: check mean/zbuffer normalization (here based on sample only, during training based on whole image)
-    // Update this part for training set ?
-
-    unsigned status = 0;
-    unsigned nOutputValues = nChannelValues * 3;
-
-    std::vector<float> output_array(nOutputValues);
-
-    // Read
-    int code = child_process->read_n_float32(&output_array[0], nOutputValues);
-    if (code) {
-        std::cerr << "film.cpp: Error when reading float array" << std::endl;
-    }
-
-    // Check magic characters
-    char c0 = child_process->read_char();
-    char c1 = child_process->read_char();
-    if (c0 == 'x' && c1 == '\n') {
-        status = 0;
-    } else {
-        std::cerr << "film.cpp: magic characters don't match: ["<< c0 <<"] ["<< c1 <<"]" << std::endl;
-        status = 1;
-    }
-
-    pixelCounter = 0;
-    // renormalize (normalization * maxLog + exp) output model data
-    // extract input model data
-    for (Point2i pixel : tile->GetPixelBounds()) {
-        
-        // check out of bounds for model input (get the center of tile because tile is not really of size 32, exemple: 34 x 32 for interpolation)
-        if (pixel.x < (widthBounds + bounds[0].x) || pixel.x > (bounds[1].x - widthBounds - 1))
-            continue;
-
-        if (pixel.y < (heightBounds + bounds[0].y) || pixel.y > (bounds[1].y - heightBounds - 1))
-            continue;
-
-        // Merge _pixel_ into _Film::pixels_
-        const FilmTilePixel &tilePixel = tile->GetPixel(pixel);
-        Pixel &mergePixel = GetPixel(pixel);
-
-        Float rgbValues[3];
-
-        Float splatRGB[3];
-        Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
-                        mergePixel.splatXYZ[1], 
-                        mergePixel.splatXYZ[2]};
-        XYZToRGB(splatXYZ, splatRGB);
-
-        for (int i = 0; i < 3; ++i){
-
-            // reverse normalization
-            // y = x_i * (max(X) - min(X)) + min(X)
-            rgbValues[i] = output_array.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
-
-            // reverse log10 function (and remove 1 which was added to log function previously)
-            rgbValues[i] = pow(10, rgbValues[i]) - 1;
-
-            //std::cout << rgbValues[i] << std::endl;
-
-            // if (pixel.x == 1 && pixel.y == 1){    
-            //     std::cout << "Output => Before " << output_array.at(pixelCounter + i * nChannelValues)<< " - After " << rgbValues[i] << std::endl;
-            // }
-            
-            // reverse scale
-            // Scale pixel value by _scale_
-            rgbValues[i] /= scale;
-
-            // reverse splat scale
-            rgbValues[i] -= splatScale * splatRGB[i];
-
-            // rescale based on sum weight contribution
-            rgbValues[i] *= mergePixel.filterWeightSum;
-        }
-
-        // convert to XYZ
-        Float xyzValues[3];
-        RGBToXYZ(rgbValues, xyzValues);
-
-        // merge final values using weighted sum
-        // affects model data with percent of confidence
-        for (int i = 0; i < 3; ++i){
-            mergePixel.xyz[i] =  mergePixel.xyz[i] * (1. - PbrtOptions.DLConfidence) + xyzValues[i] * PbrtOptions.DLConfidence;
-        }
-        
-        pixelCounter++;
     }
 }
 //////////////////////////

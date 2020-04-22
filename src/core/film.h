@@ -81,7 +81,7 @@ class Film {
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
-    void ApplyDL(FilmTile* tile);
+    void ApplyDL();
     Float getMaxZBuffer();
     //////////////////////////
     // End PrISE-3D Updates //
