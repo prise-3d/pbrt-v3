@@ -433,7 +433,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
         }
 
         // Save final image after rendering
-        camera->film->WriteImageTemp(1);
+        camera->film->WriteImageTemp(i);
 
         // Clear image tile into _Film_
         if (PbrtOptions.independent) {

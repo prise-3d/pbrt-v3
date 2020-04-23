@@ -289,19 +289,68 @@ void Film::ApplyDL() {
     int nChannelValues = hSize * wSize;
     unsigned nValues = nChannels * nChannelValues;
 
+    // store image width
+    unsigned imageWidth = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+
+    // the whole image buffer
+    std::unique_ptr<Float[]> rgbLogBased(new Float[3 * croppedPixelBounds.Area()]);
+
     // get Max Z buffer information data
     Float maxZBuffer = getMaxZBuffer();
     Float splatScale = 1.; // by default
 
-    unsigned nWeightTiles = ceil(fullResolution.x / wSize); 
-    unsigned nHeightTiles = ceil(fullResolution.y / hSize);
+    unsigned nWeightTiles = ceil(fullResolution.x / (float)wSize); 
+    unsigned nHeightTiles = ceil(fullResolution.y / (float)hSize);
 
-    std::cout << nWeightTiles << ", " << nHeightTiles << std::endl;
+    float minLogRGB = 0.;  
+    float maxLogRGB = std::numeric_limits<double>::min(); // max log value of whole film image
+
+    // convert each pixel of film into rgb log based value
+    int offset = 0;
+    for (Point2i p : croppedPixelBounds) {
+        // Convert pixel XYZ color to RGB
+        Pixel &pixel = GetPixel(p);
+        XYZToRGB(pixel.xyz, &rgbLogBased[3 * offset]);
+
+        // Normalize pixel with weight sum
+        Float filterWeightSum = pixel.filterWeightSum;
+        if (filterWeightSum != 0) {
+            Float invWt = (Float)1 / filterWeightSum;
+            rgbLogBased[3 * offset] = std::max((Float)0, rgbLogBased[3 * offset] * invWt);
+            rgbLogBased[3 * offset + 1] = std::max((Float)0, rgbLogBased[3 * offset + 1] * invWt);
+            rgbLogBased[3 * offset + 2] = std::max((Float)0, rgbLogBased[3 * offset + 2] * invWt);
+        }
+
+        // Add splat value at pixel
+        Float splatRGB[3];
+        Float splatXYZ[3] = {pixel.splatXYZ[0], pixel.splatXYZ[1],
+                             pixel.splatXYZ[2]};
+        XYZToRGB(splatXYZ, splatRGB);
+        rgbLogBased[3 * offset] += splatScale * splatRGB[0];
+        rgbLogBased[3 * offset + 1] += splatScale * splatRGB[1];
+        rgbLogBased[3 * offset + 2] += splatScale * splatRGB[2];
+
+        // Scale pixel value by _scale_
+        rgbLogBased[3 * offset] *= scale;
+        rgbLogBased[3 * offset + 1] *= scale;
+        rgbLogBased[3 * offset + 2] *= scale;
+
+        // apply log on it (avoid negative values and -inf issue)
+        // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
+        for (int i = 0; i < 3; i++){
+            rgbLogBased[3 * offset + i] = (Float)(log10(rgbLogBased[3 * offset + i] + 1));
+
+            // get max log based value
+            if (rgbLogBased[3 * offset + i] > maxLogRGB)
+                maxLogRGB = rgbLogBased[3 * offset + i];
+        }
+        
+        ++offset;
+    }
 
     // for each tile found
-    for (int i = 0; i < nWeightTiles; i++){
-
-        for (int j = 0; j < nHeightTiles; j++){
+    for (int j = 0; j < nHeightTiles; j++){
+        for (int i = 0; i < nWeightTiles; i++){
 
             unsigned wStart = i * wSize;
             unsigned hStart = j * hSize;
@@ -337,76 +386,22 @@ void Film::ApplyDL() {
             // prepare input values
             std::vector<float> inputValues(nValues);
 
-            // store max values for mean input and zBuffer
-            float maxLogRGB = std::numeric_limits<float>::min();
-            float minLogRGB = std::numeric_limits<float>::max();
-
             int pixelCounter = 0;
-            double epsilon = std::numeric_limits<double>::epsilon();
 
             // extract input model data
             for (Point2i pixel : tileBounds) {
                 
                 // Merge _pixel_ into _Film::pixels_
-                Pixel &mergePixel = GetPixel(pixel);
                 Normal3f &normal = GetNormalPoint(pixel);
                 Float &bufferPoint = GetBufferPoint(pixel);
 
-                Float xyz[3];
-
-                for (int i = 0; i < 3; i++){
-                    xyz[i] = mergePixel.xyz[i];
-                }
-
-                // convert xyz to rgb values of current pixel
-                Float rgb[3];
-                XYZToRGB(xyz, rgb);
-
-                if (mergePixel.filterWeightSum != 0) {
-                    Float invWt = (Float)1 / mergePixel.filterWeightSum;
-                    rgb[0] = std::max((Float)0, rgb[0] * invWt);
-                    rgb[1] = std::max((Float)0, rgb[1] * invWt);
-                    rgb[2] = std::max((Float)0, rgb[2] * invWt);
-                }
-
-                // Add splat value at pixel
-                Float splatRGB[3];
-                Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
-                                mergePixel.splatXYZ[1], 
-                                mergePixel.splatXYZ[2]};
-
-                XYZToRGB(splatXYZ, splatRGB);
-
-                rgb[0] += splatScale * splatRGB[0];
-                rgb[1] += splatScale * splatRGB[1];
-                rgb[2] += splatScale * splatRGB[2];
-
-                // Scale pixel value by _scale_
-                rgb[0] *= scale;
-                rgb[1] *= scale;
-                rgb[2] *= scale;
-
-                // End RGB conversion process
-
-                // fill RGB values with expected preprocessing
-                for (int i = 0; i < 3; ++i){
-
-                    // apply log on it (avoid negative values and -inf issue)
-                    // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
-                    
-                    float currentChannel = (float)(log10(rgb[i] + 1));
-
-                    inputValues.at(pixelCounter + i * nChannelValues) = currentChannel;
-                    
-                    // store min and max information for normalization
-                    if (currentChannel > maxLogRGB){
-                        maxLogRGB = currentChannel;
-                    }
-
-                    if (currentChannel < minLogRGB){
-                        minLogRGB = currentChannel;
-                    }
-                }
+                int offset = (pixel.x - croppedPixelBounds.pMin.x) + (pixel.y - croppedPixelBounds.pMin.y) * imageWidth;
+                
+                // update and norm log based values
+                float logDiff = maxLogRGB - minLogRGB;
+                inputValues.at(pixelCounter + 0 * nChannelValues) = (float)(rgbLogBased[offset] - minLogRGB) / logDiff;
+                inputValues.at(pixelCounter + 1 * nChannelValues) = (float)(rgbLogBased[offset + 1] - minLogRGB) / logDiff;
+                inputValues.at(pixelCounter + 2 * nChannelValues) = (float)(rgbLogBased[offset + 2] - minLogRGB) / logDiff;
                 
                 // fill normal values and normalize
                 inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
@@ -415,30 +410,16 @@ void Film::ApplyDL() {
 
                 // fill zBuffer value
                 // normalize zBuffer value
-                inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint / maxZBuffer);
+                if (bufferPoint != Infinity)
+                    inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint / maxZBuffer);
+                else
+                    inputValues.at(pixelCounter + 6 * nChannelValues) = 1.;
 
                 pixelCounter++;
             }
 
-            //std::cout << "Global " << maxZBuffer << " vs. " << currentMaxZbuffer << std::endl;
-
-            // normalize model input data if necessary
-            pixelCounter = 0;
-
-            for (Point2i pixel : tileBounds) {
-
-                for (int i = 0; i < 3; ++i){
-                    // normalize channel and apply log on it
-                    inputValues.at(pixelCounter + i * nChannelValues) = (inputValues.at(pixelCounter + i * nChannelValues) - minLogRGB) / (maxLogRGB - minLogRGB);
-                }
-
-                pixelCounter++;
-            }
-
+            // Send data to model !
             child_process->write_n_float32(&inputValues[0], nValues);
-
-            // TODO: check mean/zbuffer normalization (here based on sample only, during training based on whole image)
-            // Update this part for training set ?
 
             unsigned status = 0;
             unsigned nOutputValues = nChannelValues * 3;
@@ -461,9 +442,10 @@ void Film::ApplyDL() {
                 status = 1;
             }
 
+
             pixelCounter = 0;
 
-            // renormalize (normalization * maxLog + exp) output model data
+            // denormalize (normalization * maxLog + exp) output model data
             // extract input model data
             for (Point2i pixel : tileBounds) {
 
@@ -479,7 +461,7 @@ void Film::ApplyDL() {
                 XYZToRGB(splatXYZ, splatRGB);
 
                 for (int i = 0; i < 3; ++i){
-
+                    
                     // reverse normalization
                     // y = x_i * (max(X) - min(X)) + min(X)
                     rgbValues[i] = output_array.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
