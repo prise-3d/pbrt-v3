@@ -254,10 +254,6 @@ void SamplerIntegrator::Render(const Scene &scene) {
         Preprocess(scene, *sampler);
         std::cout << "Rendering " << (i + 1) << " of " << maxNumberOfImages  << " images" << std::endl;
 
-        // define new seed for each generated image with specific number of sample
-        uint64_t randomseed;
-        randomseed = rand();
-
         // Compute number of tiles, _nTiles_, to use for parallel rendering
         Bounds2i sampleBounds = camera->film->GetSampleBounds();
 
@@ -274,6 +270,10 @@ void SamplerIntegrator::Render(const Scene &scene) {
             // main render loop
 
             for (int j = 1; j <= PbrtOptions.samples; j++) {
+
+                // define new seed for each new sample of image
+                uint64_t randomseed;
+                randomseed = rand();
 
                 // Equivalent to
                 // for (int y = 0; y < nTiles.y; ++y){
@@ -439,6 +439,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
         if (PbrtOptions.independent) {
             camera->film->Clear();
         }
+
+        // kill python nn process
+        camera->film->child_process->writeEOF();
 
         reporter.Done();
     }
