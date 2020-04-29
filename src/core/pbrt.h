@@ -202,8 +202,8 @@ struct Options {
     std::string load = ""; // rawls image path to load when starting rendering
     std::string nn_path = ""; // model script path to load
     bool useOfDLModel = false; // specify if a model is used or not 
-    int runDLEvery = 20; // Default each nb samples model is runned
-    int DLConfidence = 1.; // use at 50% the result of the model when denoising samples
+    int runDLEvery = 5; // Default each nb samples model is runned
+    int DLConfidence = 0.5; // use at 50% the result of the model when denoising samples
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////

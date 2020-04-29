@@ -404,8 +404,6 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     }
 
                     reporter.Update();
-                        
-                    //}//, PbrtOptions.samples, 1); 
 
                     LOG(INFO) << "Finished samples for " << tile;
 
@@ -441,7 +439,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
         }
 
         // kill python nn process
-        camera->film->child_process->writeEOF();
+        if (PbrtOptions.useOfDLModel){
+            camera->film->child_process->writeEOF();
+        }
 
         reporter.Done();
     }
