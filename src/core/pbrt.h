@@ -60,14 +60,6 @@
 #include <string.h>
 #include <glog/logging.h>
 
-//////////////////////
-// PrISE-3D Updates //
-//////////////////////
-#include <torch/script.h>
-//////////////////////////
-// End PrISE-3D Updates //
-//////////////////////////
-
 // Platform-specific definitions
 #if defined(_WIN32) || defined(_WIN64)
   #define PBRT_IS_WINDOWS

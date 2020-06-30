@@ -40,7 +40,9 @@ make -j
 
 ### Updates
 
-Possibility to generate few images in one run with different random seed. 
+#### Running `pbrt` 
+
+Possibility to generate few images in one run with different random seed. Hence, scene is loading only once time.
 
 ```sh
 cd build
@@ -48,23 +50,21 @@ cd build
 ```
 
 **Parameters:**
-- *--samples*: number of samples per pixel per image
-- *--images*: number of images with `n` samples expected as output
-- *--folder*: specific output folder (by default `temp`)
-- *--startindex*: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
-- *--independent*: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
-- *--digit*: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
-- *--normals*: boolean which specifies if normals map is saved after generating first image
-- *--zbuffer*: boolean which specifies if Z-Buffer is saved after generating first image
-- *--nn_model*: nn model python script path.
+- `--samples`: number of samples per pixel per image
+- `--images`: number of images with `n` samples expected as output
+- `--folder`: specific output folder (by default `temp`)
+- `--startindex`: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
+- `--independent`: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
+- `--digit`: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
+- `--normals`: boolean which specifies if normals map is saved after generating first image
+- `--zbuffer`: boolean which specifies if Z-Buffer is saved after generating first image
+- `--nn_model`: neural network model python script path if use of adaptive sampling.
 
 **Output information:**
 
-Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
-
-Normals Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-normals.rawls`
-
-Z-Buffer Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-zbuffer.rawls`
+- Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
+- Normals Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-normals.rawls`
+- Z-Buffer Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-zbuffer.rawls`
 
 #### Information
 
