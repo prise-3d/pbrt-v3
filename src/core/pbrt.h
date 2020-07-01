@@ -60,14 +60,6 @@
 #include <string.h>
 #include <glog/logging.h>
 
-//////////////////////
-// PrISE-3D Updates //
-//////////////////////
-#include <torch/script.h>
-//////////////////////////
-// End PrISE-3D Updates //
-//////////////////////////
-
 // Platform-specific definitions
 #if defined(_WIN32) || defined(_WIN64)
   #define PBRT_IS_WINDOWS
@@ -200,8 +192,8 @@ struct Options {
     bool normals = false; // save or not of normals data at first iteration
     bool zbuffer = false; // save or not of zbuffer data at first iteration
     std::string load = ""; // rawls image path to load when starting rendering
-    std::string model_path = ""; // pytorch model path to load
-    bool useOfDLModel = false; // specify if a pytorch model is used or not 
+    std::string nn_path = ""; // model script path to load
+    bool useOfDLModel = false; // specify if a model is used or not 
     int runDLEvery = 5; // Default each nb samples model is runned
     int DLConfidence = 0.5; // use at 50% the result of the model when denoising samples
     //////////////////////////

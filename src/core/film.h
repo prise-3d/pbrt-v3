@@ -52,7 +52,7 @@
 //////////////////////
 // PrISE-3D Updates //
 //////////////////////
-#include <torch/script.h> // One-stop header.
+#include "tools/childprocess.hpp"
 //////////////////////////
 // End PrISE-3D Updates //
 //////////////////////////
@@ -81,7 +81,7 @@ class Film {
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
-    void ApplyDL(FilmTile* tile);
+    void ApplyDL();
     Float getMaxZBuffer();
     //////////////////////////
     // End PrISE-3D Updates //
@@ -115,6 +115,14 @@ class Film {
     std::unique_ptr<Filter> filter;
     const std::string filename;
     Bounds2i croppedPixelBounds;
+
+    //////////////////////
+    // PrISE-3D Updates //
+    //////////////////////
+    std::unique_ptr<ChildProcess> child_process; // python model interaction
+    //////////////////////////
+    // End PrISE-3D Updates //
+    //////////////////////////
 
     //////////////////////
     // PrISE-3D Updates //
@@ -273,7 +281,6 @@ class FilmTile {
     std::vector<FilmTilePixel> pixels;
     const Float maxSampleLuminance;
     friend class Film;
-    std::unique_ptr<torch::jit::script::Module> module;
 };
 
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter);

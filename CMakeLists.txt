@@ -9,10 +9,10 @@ SET (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 PROJECT ( PBRT-V3 )
 
-# Add libtorch to project
+# Add libtorch to project (removed currently)
 # cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
-find_package(Torch REQUIRED)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+# find_package(Torch REQUIRED)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 OPTION(PBRT_FLOAT_AS_DOUBLE "Use 64-bit floats" OFF)
 
@@ -508,7 +508,7 @@ SET ( PBRT_CXX11_FEATURES
   cxx_static_assert
 )
 TARGET_COMPILE_FEATURES ( pbrt PRIVATE ${PBRT_CXX11_FEATURES})
-TARGET_LINK_LIBRARIES ( pbrt "${TORCH_LIBRARIES}")
+# TARGET_LINK_LIBRARIES ( pbrt "${TORCH_LIBRARIES}")
 SET_PROPERTY (TARGET pbrt PROPERTY CXX_STANDARD 11)
 
 IF (WIN32)
@@ -532,8 +532,6 @@ ADD_SANITIZERS ( pbrt_exe )
 SET_TARGET_PROPERTIES ( pbrt_exe PROPERTIES OUTPUT_NAME pbrt )
 TARGET_COMPILE_FEATURES ( pbrt_exe PRIVATE ${PBRT_CXX11_FEATURES} )
 TARGET_LINK_LIBRARIES ( pbrt_exe ${ALL_PBRT_LIBS} )
-# update for pytorch
-# SET_PROPERTY (TARGET pbrt_exe PROPERTY CXX_STANDARD 11)
 
 # Tools
 ADD_EXECUTABLE ( bsdftest src/tools/bsdftest.cpp )

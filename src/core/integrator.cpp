@@ -237,26 +237,22 @@ void SamplerIntegrator::Render(const Scene &scene) {
     //////////////////////
 
     // check if necessary to use DL module
-    if (PbrtOptions.model_path.length() > 0) {
+    if (PbrtOptions.nn_path.length() > 0) {
         PbrtOptions.useOfDLModel = true;
     }
 
     srand(time(0));
     uint64_t seed = 0;
-    uint64_t numberOfSamples = PbrtOptions.samples;  // get number of samples expected by the renderer
-                              // by image
+    uint64_t numberOfSamples = PbrtOptions.samples;  // get number of samples expected by the renderer by image
 
     int startImagesIndex = 0 + PbrtOptions.startindex;
     int maxNumberOfImages = PbrtOptions.images + PbrtOptions.startindex;
 
     // loop for n images, seed random generator
     for (int i = startImagesIndex; i < maxNumberOfImages; i++) {
+
         Preprocess(scene, *sampler);
         std::cout << "Rendering " << (i + 1) << " of " << maxNumberOfImages  << " images" << std::endl;
-
-        // define new seed for each generated image with specific number of sample
-        uint64_t randomseed;
-        randomseed = rand();
 
         // Compute number of tiles, _nTiles_, to use for parallel rendering
         Bounds2i sampleBounds = camera->film->GetSampleBounds();
@@ -271,42 +267,48 @@ void SamplerIntegrator::Render(const Scene &scene) {
         // update reporter base on tile size and number of samples
         ProgressReporter reporter(PbrtOptions.samples * nTiles.x * nTiles.y, "Rendering");
         {   
-            // Equivalent to
-            // for (int y = 0; y < nTiles.y; ++y){
-            //     for (int x = 0; x < nTiles.x; ++x){
-            //         Point2i tile = Point2i(x, y);
+            // main render loop
 
-            ParallelFor2D([&](Point2i tile) {
-                // Render section of image corresponding to _tile_
+            for (int j = 1; j <= PbrtOptions.samples; j++) {
 
-                // Allocate _MemoryArena_ for tile
-                MemoryArena arena;
+                // define new seed for each new sample of image
+                uint64_t randomseed;
+                randomseed = rand();
 
-                // Get sampler instance for tile
+                // Equivalent to
+                // for (int y = 0; y < nTiles.y; ++y){
+                //     for (int x = 0; x < nTiles.x; ++x){
+                //         Point2i tile = Point2i(x, y);
+                ParallelFor2D([&](Point2i tile) {
+                    // Render section of image corresponding to _tile_
 
-                // use of random seed for each image generated
-                seed = tile.x + tile.y + randomseed;
+                    // Allocate _MemoryArena_ for tile
+                    MemoryArena arena;
 
-                std::unique_ptr<Sampler> tileSampler = sampler->Clone(seed);
+                    // Get sampler instance for tile
 
-                // Compute sample bounds for tile
-                int x0 = sampleBounds.pMin.x + tile.x * tileSize;
-                int x1 = std::min(x0 + tileSize, sampleBounds.pMax.x);
-                int y0 = sampleBounds.pMin.y + tile.y * tileSize;
-                int y1 = std::min(y0 + tileSize, sampleBounds.pMax.y);
-                Bounds2i tileBounds(Point2i(x0, y0), Point2i(x1, y1));
-                LOG(INFO) << "Starting image tile " << tileBounds;
+                    // use of random seed for each image generated
+                    seed = tile.x + tile.y + randomseed;
 
-                // Get _FilmTile_ for tile
-                std::unique_ptr<FilmTile> filmTile =
-                    camera->film->GetFilmTile(tileBounds);
+                    std::unique_ptr<Sampler> tileSampler = sampler->Clone(seed);
 
-                // change the way of computed tile (here 1 spp per 1 spp)
-                //ParallelFor([&](int j){
-                for (int j = 0; j < PbrtOptions.samples; j++) {
+                    // Compute sample bounds for tile
+                    int x0 = sampleBounds.pMin.x + tile.x * tileSize;
+                    int x1 = std::min(x0 + tileSize, sampleBounds.pMax.x);
+                    int y0 = sampleBounds.pMin.y + tile.y * tileSize;
+                    int y1 = std::min(y0 + tileSize, sampleBounds.pMax.y);
+                    Bounds2i tileBounds(Point2i(x0, y0), Point2i(x1, y1));
+                    LOG(INFO) << "Starting image tile " << tileBounds;
+
+                    // Get _FilmTile_ for tile
+                    std::unique_ptr<FilmTile> filmTile =
+                        camera->film->GetFilmTile(tileBounds);
+
+                    // change the way of computed tile (here 1 spp per 1 spp)
+                    //ParallelFor([&](int j){
 
                     // Loop over pixels in tile to render them
-                    // ParallelFor2D([&](Point2i pixel) { 
+                    //  ParallelFor2D([&](Point2i pixel) { 
                     // (custom ParallelFor2D for Bounds2i, but does not increase performance as expected)
                     for (Point2i pixel : tileBounds) {
                         {
@@ -377,7 +379,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                         // always update buffer and normals information for first image and first sample
                         // if ((PbrtOptions.zbuffer || PbrtOptions.normals) && i == startImagesIndex){
-                        if (i == startImagesIndex && j == 0) {
+                        if (i == startImagesIndex && j == 1) {
                             // only if current pixel is in output image
                             // resolution
                             if ((pixel.x > 0 &&  pixel.x < fullResolution.x) &&  (pixel.y > 0 && pixel.y < fullResolution.y)) {
@@ -401,41 +403,44 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                     }
 
-                    //////////////////////
-                    // PrISE-3D Updates //
-                    //////////////////////
-                    // check number of samples for this tile
-                    // even if call of this method is at each every samples,
-                    // it's more convenient for merging with DL
-                    if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0 && j >= PbrtOptions.runDLEvery) {
-                        // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
-                        // merge using DL denoising autoencoder
-                        // need pointer (std::mode will remove the unique ptr)
-                        camera->film->ApplyDL(filmTile.get());
-                    }
-                    //////////////////////////
-                    // End PrISE-3D Updates //
-                    //////////////////////////
-
-
                     reporter.Update();
-                     
-                }//, PbrtOptions.samples, 1); 
 
-                LOG(INFO) << "Finished samples for " << tile;
+                    LOG(INFO) << "Finished samples for " << tile;
 
-                // Merge image tile into _Film_
-                camera->film->MergeFilmTile(std::move(filmTile));
+                    // Merge image tile into _Film_
+                    camera->film->MergeFilmTile(std::move(filmTile));
 
-            }, nTiles);
+                }, nTiles);
+
+                //////////////////////
+                // PrISE-3D Updates //
+                //////////////////////
+                // Apply denoising model on the whole image
+                // even if call of this method is at each every samples,
+                // it's more convenient for merging with DL
+                if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0) {
+                    // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
+                    // merge using DL denoising autoencoder
+                    // need pointer (std::mode will remove the unique ptr)
+                    camera->film->ApplyDL();
+                }
+                //////////////////////////
+                // End PrISE-3D Updates //
+                //////////////////////////
+            }
         }
 
         // Save final image after rendering
-        camera->film->WriteImageTemp(1);
+        camera->film->WriteImageTemp(i);
 
         // Clear image tile into _Film_
         if (PbrtOptions.independent) {
             camera->film->Clear();
+        }
+
+        // kill python nn process
+        if (PbrtOptions.useOfDLModel){
+            camera->film->child_process->writeEOF();
         }
 
         reporter.Done();

@@ -31,20 +31,18 @@ $ git submodule update --init --recursive
 
 ### Makefile builds (Linux, other Unixes, and Mac) ###
 
-Install procedure with libtorch:
 ```
-wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.4.0%2Bcpu.zip
-unzip libtorch-cxx11-abi-shared-with-deps-1.4.0+cpu.zip
-
 mkdir build
 cd build
-cmake -DCMAKE_PREFIX_PATH=../libtorch ..
+cmake ..
 make -j
 ```
 
 ### Updates
 
-Possibility to generate few images in one run with different random seed. 
+#### Running `pbrt` 
+
+Possibility to generate few images in one run with different random seed. Hence, scene is loading only once time.
 
 ```sh
 cd build
@@ -52,25 +50,21 @@ cd build
 ```
 
 **Parameters:**
-- *--samples*: number of samples per pixel per image
-- *--images*: number of images with `n` samples expected as output
-- *--folder*: specific output folder (by default `temp`)
-- *--startindex*: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
-- *--independent*: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
-- *--digit*: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
-- *--normals*: boolean which specifies if normals map is saved after generating first image
-- *--zbuffer*: boolean which specifies if Z-Buffer is saved after generating first image
-- *--model_path*: pytorch model to use (need `.pt` file), follow this [tutorial](https://pytorch.org/tutorials/advanced/cpp_export.html) to extract your model.
-
-Python script convertion for pytorch model is available here [script](https://github.com/prise-3d/DL-AAN/blob/master/autoencoder_convert.py) and an c++ example [project](https://github.com/prise-3d/DL-AAN/tree/master/cppexample) is also available.
+- `--samples`: number of samples per pixel per image
+- `--images`: number of images with `n` samples expected as output
+- `--folder`: specific output folder (by default `temp`)
+- `--startindex`: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
+- `--independent`: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
+- `--digit`: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
+- `--normals`: boolean which specifies if normals map is saved after generating first image
+- `--zbuffer`: boolean which specifies if Z-Buffer is saved after generating first image
+- `--nn_model`: neural network model python script path if use of adaptive sampling.
 
 **Output information:**
 
-Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
-
-Normals Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-normals.rawls`
-
-Z-Buffer Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-zbuffer.rawls`
+- Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-{imageIndex}.{ext}`
+- Normals Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-normals.rawls`
+- Z-Buffer Images are saved into `{folder}/{image_name}` folder with the following name convention `{image_name}-S{samples}-zbuffer.rawls`
 
 #### Information
 

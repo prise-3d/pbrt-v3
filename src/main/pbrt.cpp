@@ -185,10 +185,10 @@ int main(int argc, char *argv[]) {
                 return 0;
             }
         }
-        else if (!strcmp(argv[i], "--model_path") || !strcmp(argv[i], "-model_path")) {
+        else if (!strcmp(argv[i], "--nn_path") || !strcmp(argv[i], "-nn_path")) {
              if (i + 1 == argc)
-                 usage("missing value after --model_path argument");
-            options.model_path = argv[++i];
+                 usage("missing value after --nn_path argument");
+            options.nn_path = argv[++i];
 
         }
         //////////////////////////

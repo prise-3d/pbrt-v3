@@ -525,9 +525,7 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
     outputFile << "IHDR" << std::endl;
     outputFile << ((sizeof(width) + sizeof(height) + sizeof(nbChannels)))  << std::endl;
     outputFile.write((char *) &width, sizeof(width));
-    outputFile << " ";
     outputFile.write((char *) &height, sizeof(height));
-    outputFile << " ";
     outputFile.write((char *) &nbChannels, sizeof(nbChannels));
     outputFile << std::endl;
 
@@ -585,9 +583,8 @@ static bool WriteImageRAWLS(const std::string &filename, const Float *rgb, int w
                 
                 outputFile.write((char *) &pixel[c], sizeof(pixel[c]));
             }
-      
-            outputFile << std::endl;
         }
+        outputFile << std::endl;
     }
     outputFile.close();
 

@@ -5,3 +5,6 @@ src/objs
 .sconsign.dblite
 build
 .vscode
+
+.python-version
+data
