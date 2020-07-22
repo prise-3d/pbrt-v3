@@ -129,14 +129,8 @@ class BDPTIntegrator : public Integrator {
   public:
     // BDPTIntegrator Public Methods
     BDPTIntegrator(std::shared_ptr<Sampler> sampler,
-                    ////////////////////////////////////
-                    // PrISE-3D Updates (Stereo/Anim) //
-                    ////////////////////////////////////
-                   //std::shared_ptr<const Camera> camera, int maxDepth,
                    std::shared_ptr<Camera> camera, int maxDepth,
-                    ////////////////////////////////
-                    // PrISE-3D End (Stereo/Anim) //
-                    ////////////////////////////////
+		   //                   std::shared_ptr<const Camera> camera, int maxDepth,
                    bool visualizeStrategies, bool visualizeWeights,
                    const Bounds2i &pixelBounds,
                    const std::string &lightSampleStrategy = "power")
@@ -148,30 +142,18 @@ class BDPTIntegrator : public Integrator {
           pixelBounds(pixelBounds),
           lightSampleStrategy(lightSampleStrategy) {}
     void Render(const Scene &scene);
-
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
+    
     void reinitFilm(const std::string &outputfilename){
       Camera *cam = camera.get();
       cam->film->filename = outputfilename;
       cam->film->Clear();
     }
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
-
+    
   private:
     // BDPTIntegrator Private Data
     std::shared_ptr<Sampler> sampler;
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-    //std::shared_ptr<const Camera> camera;
+    //    std::shared_ptr<const Camera> camera;
     std::shared_ptr<Camera> camera;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
     const int maxDepth;
     const bool visualizeStrategies;
     const bool visualizeWeights;
@@ -468,14 +450,8 @@ Spectrum ConnectBDPT(
     Float *misWeight = nullptr);
 BDPTIntegrator *CreateBDPTIntegrator(const ParamSet &params,
                                      std::shared_ptr<Sampler> sampler,
-                                    ////////////////////////////////////
-                                    // PrISE-3D Updates (Stereo/Anim) //
-                                    ////////////////////////////////////
-                                     //std::shared_ptr<const Camera> camera);
                                      std::shared_ptr<Camera> camera);
-                                    ////////////////////////////////
-                                    // PrISE-3D End (Stereo/Anim) //
-                                    ////////////////////////////////
+  //                                     std::shared_ptr<const Camera> camera);
 
 // Vertex Inline Method Definitions
 inline Vertex Vertex::CreateCamera(const Camera *camera, const Ray &ray,

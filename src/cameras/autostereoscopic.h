@@ -35,42 +35,46 @@
 #pragma once
 #endif
 
-#ifndef PBRT_INTEGRATORS_AO_H
-#define PBRT_INTEGRATORS_AO_H
+#ifndef PBRT_CAMERAS_AUTOSTEREOSCOPIC_H
+#define PBRT_CAMERAS_AUTOSTEREOSCOPIC_H
 
-// integrators/ao.h*
+// cameras/perspective.h*
 #include "pbrt.h"
-#include "integrator.h"
+#include "camera.h"
+#include "film.h"
+#include "cameras/perspective.h"
 
 namespace pbrt {
-
-// AOIntegrator Declarations
-class AOIntegrator : public SamplerIntegrator {
-  public:
-    // AOIntegrator Public Methods
-    AOIntegrator(bool cosSample, int nSamples,
-                 std::shared_ptr<const Camera> camera,
-                 std::shared_ptr<Sampler> sampler,
-                 const Bounds2i &pixelBounds);
-    Spectrum Li(const RayDifferential &ray, const Scene &scene,
-                Sampler &sampler, MemoryArena &arena, int depth) const;
+  
+// AutoStereoscopicCamera Declarations
+class AutoStereoscopicCamera : public PerspectiveCamera {
+ public:
+  // AutoStereoscopicCamera Public Methods
+  AutoStereoscopicCamera(const AnimatedTransform &CameraToWorld,
+			 const Bounds2f &screenWindow, Float shutterOpen,
+			 Float shutterClose, Float lensRadius, Float focalDistance,
+			 Float fov, Film *film, const Medium *medium, 
+			 int viewId, int nbView, Float eyeDistance);
+  Float GenerateRay(const CameraSample &sample, Ray *) const;
+  Float GenerateRayDifferential(const CameraSample &sample,
+				RayDifferential *ray) const;
+  /*  Spectrum We(const Ray &ray, Point2f *pRaster2 = nullptr) const;
+      void Pdf_We(const Ray &ray, Float *pdfPos, Float *pdfDir) const;
+      Spectrum Sample_Wi(const Interaction &ref, const Point2f &sample,
+      Vector3f *wi, Float *pdf, Point2f *pRaster,
+      VisibilityTester *vis) const;
+  */
  private:
-    bool cosSample;
-    int nSamples;
+  // AutoStereoscopicCamera Private Data
+  Vector3f dxCamera, dyCamera;
+  Float A;
+  Point3f eyeLocation;// origine par rapport à la position de l'oeil
 };
 
-AOIntegrator *CreateAOIntegrator(const ParamSet &params,
-                                 std::shared_ptr<Sampler> sampler,
-                                ////////////////////////////////////
-                                // PrISE-3D Updates (Stereo/Anim) //
-                                ////////////////////////////////////
+AutoStereoscopicCamera *CreateAutoStereoscopicCamera(const ParamSet &params,
+						     const AnimatedTransform &cam2world,
+						     Film *film, const Medium *medium);
 
-                                 std::shared_ptr<Camera> camera);
-                                 //std::shared_ptr<const Camera> camera);
-                                ////////////////////////////////
-                                // PrISE-3D End (Stereo/Anim) //
-                                ////////////////////////////////
+}// namespace pbrt 
 
-}  // namespace pbrt
-
-#endif  // PBRT_INTEGRATORS_PATH_H
+#endif  // PBRT_CAMERAS_AUTOSTEREOSCOPIC_H

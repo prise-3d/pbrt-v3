@@ -35,52 +35,46 @@
 #pragma once
 #endif
 
-#ifndef PBRT_INTEGRATORS_DIRECTLIGHTING_H
-#define PBRT_INTEGRATORS_DIRECTLIGHTING_H
+#ifndef PBRT_INTEGRATORS_VOLPATH_H
+#define PBRT_INTEGRATORS_VOLPATH_H
 
-// integrators/directlighting.h*
+// integrators/volpath.h*
 #include "pbrt.h"
 #include "integrator.h"
-#include "scene.h"
+#include "lightdistrib.h"
 
 namespace pbrt {
 
-// LightStrategy Declarations
-enum class LightStrategy { UniformSampleAll, UniformSampleOne };
-
-// DirectLightingIntegrator Declarations
-class DirectLightingIntegrator : public SamplerIntegrator {
+// VolPathIntegrator Declarations
+class VolPathIntegrator : public SamplerIntegrator {
   public:
-    // DirectLightingIntegrator Public Methods
-    DirectLightingIntegrator(LightStrategy strategy, int maxDepth,
-                            ////////////////////////////////////
-                            // PrISE-3D Updates (Stereo/Anim) //
-                            ////////////////////////////////////
-                            //std::shared_ptr<const Camera> camera,
-                            std::shared_ptr<Camera> camera,
-                            ////////////////////////////////
-                            // PrISE-3D End (Stereo/Anim) //
-                            ////////////////////////////////
-                             std::shared_ptr<Sampler> sampler,
-                             const Bounds2i &pixelBounds)
+    // VolPathIntegrator Public Methods
+  //    VolPathIntegrator(int maxDepth, std::shared_ptr<const Camera> camera,
+    VolPathIntegrator(int maxDepth, std::shared_ptr<Camera> camera,
+                      std::shared_ptr<Sampler> sampler,
+                      const Bounds2i &pixelBounds, Float rrThreshold = 1,
+                      const std::string &lightSampleStrategy = "spatial")
         : SamplerIntegrator(camera, sampler, pixelBounds),
-          strategy(strategy),
-          maxDepth(maxDepth) {}
+          maxDepth(maxDepth),
+          rrThreshold(rrThreshold),
+          lightSampleStrategy(lightSampleStrategy) { }
+    void Preprocess(const Scene &scene, Sampler &sampler);
     Spectrum Li(const RayDifferential &ray, const Scene &scene,
                 Sampler &sampler, MemoryArena &arena, int depth) const;
-    void Preprocess(const Scene &scene, Sampler &sampler);
 
   private:
-    // DirectLightingIntegrator Private Data
-    const LightStrategy strategy;
+    // VolPathIntegrator Private Data
     const int maxDepth;
-    std::vector<int> nLightSamples;
+    const Float rrThreshold;
+    const std::string lightSampleStrategy;
+    std::unique_ptr<LightDistribution> lightDistribution;
 };
 
-DirectLightingIntegrator *CreateDirectLightingIntegrator(
+VolPathIntegrator *CreateVolPathIntegrator(
     const ParamSet &params, std::shared_ptr<Sampler> sampler,
-    std::shared_ptr<const Camera> camera);
+    std::shared_ptr<Camera> camera);
+//    std::shared_ptr<const Camera> camera);
 
 }  // namespace pbrt
 
-#endif  // PBRT_INTEGRATORS_DIRECTLIGHTING_H
+#endif  // PBRT_INTEGRATORS_VOLPATH_H

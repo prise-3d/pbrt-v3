@@ -190,14 +190,8 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
 VolPathIntegrator *CreateVolPathIntegrator(
     const ParamSet &params, std::shared_ptr<Sampler> sampler,
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-    //std::shared_ptr<const Camera> camera){
-    std::shared_ptr<Camera> camera){
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
+    std::shared_ptr< Camera> camera) {
+  //    std::shared_ptr<const Camera> camera) {
     int maxDepth = params.FindOneInt("maxdepth", 5);
     int np;
     const int *pb = params.FindInt("pixelbounds", &np);

@@ -50,14 +50,8 @@ namespace pbrt {
 class SPPMIntegrator : public Integrator {
   public:
     // SPPMIntegrator Public Methods
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-    // SPPMIntegrator(std::shared_ptr<const Camera> &camera, int nIterations,
+  //    SPPMIntegrator(std::shared_ptr<const Camera> &camera, int nIterations,
     SPPMIntegrator(std::shared_ptr<Camera> &camera, int nIterations,
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
                    int photonsPerIteration, int maxDepth,
                    Float initialSearchRadius, int writeFrequency)
         : camera(camera),
@@ -69,17 +63,17 @@ class SPPMIntegrator : public Integrator {
                                   : camera->film->croppedPixelBounds.Area()),
           writeFrequency(writeFrequency) {}
     void Render(const Scene &scene);
-
+    
+    void reinitFilm(const std::string &outputfilename){
+      Camera *cam = camera.get();
+      cam->film->filename = outputfilename;
+      cam->film->Clear();
+    }
+      
   private:
     // SPPMIntegrator Private Data
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-    //std::shared_ptr<const Camera> camera;
+    //    std::shared_ptr<const Camera> camera;
     std::shared_ptr<Camera> camera;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
     const Float initialSearchRadius;
     const int nIterations;
     const int maxDepth;
@@ -88,14 +82,8 @@ class SPPMIntegrator : public Integrator {
 };
 
 Integrator *CreateSPPMIntegrator(const ParamSet &params,
-                                ////////////////////////////////////
-                                // PrISE-3D Updates (Stereo/Anim) //
-                                ////////////////////////////////////
-                                 //std::shared_ptr<const Camera> camera);
                                  std::shared_ptr<Camera> camera);
-                                ////////////////////////////////
-                                // PrISE-3D End (Stereo/Anim) //
-                                ////////////////////////////////
+//                                 std::shared_ptr<const Camera> camera);
 
 }  // namespace pbrt
 

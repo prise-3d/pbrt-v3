@@ -40,22 +40,11 @@
 
 // core/film.h*
 #include "pbrt.h"
-#include "api.h"
 #include "geometry.h"
 #include "spectrum.h"
 #include "filter.h"
 #include "stats.h"
 #include "parallel.h"
-#include "imageio.h"
-#include <sys/stat.h>
-
-//////////////////////
-// PrISE-3D Updates //
-//////////////////////
-#include "tools/childprocess.hpp"
-//////////////////////////
-// End PrISE-3D Updates //
-//////////////////////////
 
 namespace pbrt {
 
@@ -77,79 +66,18 @@ class Film {
     Bounds2f GetPhysicalExtent() const;
     std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
     void MergeFilmTile(std::unique_ptr<FilmTile> tile);
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    void ApplyDL();
-    Float getMaxZBuffer();
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-    
     void SetImage(const Spectrum *img) const;
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    void LoadRawlsImage(const std::string filename) const;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     void AddSplat(const Point2f &p, Spectrum v);
     void WriteImage(Float splatScale = 1);
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    void WriteImageTemp(int index, Float splatScale = 1);
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     void Clear();
 
     // Film Public Data
     const Point2i fullResolution;
     const Float diagonal;
     std::unique_ptr<Filter> filter;
-
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-
     //const std::string filename;
     std::string filename;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
-
     Bounds2i croppedPixelBounds;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    std::unique_ptr<ChildProcess> child_process; // python model interaction
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // Film public Methods
-    void UpdateAdditionals(const Point2i &p, const Ray &ray) {
-        CHECK(InsideExclusive(p, croppedPixelBounds));
-        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-        int offset = (p.x - croppedPixelBounds.pMin.x) +
-                     (p.y - croppedPixelBounds.pMin.y) * width;
-        
-        zbuffer[offset] = ray.tMax;
-        normals[offset] = ray.nn;
-    }
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
 
   private:
     // Film Private Data
@@ -161,20 +89,11 @@ class Film {
         Float pad;
     };
     std::unique_ptr<Pixel[]> pixels;
-    static PBRT_CONSTEXPR int filterTableWidth = 32; // TODO check if really 32 ?
+    static PBRT_CONSTEXPR int filterTableWidth = 16;
     Float filterTable[filterTableWidth * filterTableWidth];
     std::mutex mutex;
     const Float scale;
     const Float maxSampleLuminance;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    std::unique_ptr<Float[]> zbuffer;
-    std::unique_ptr<Normal3f[]> normals;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
 
     // Film Private Methods
     Pixel &GetPixel(const Point2i &p) {
@@ -184,33 +103,10 @@ class Film {
                      (p.y - croppedPixelBounds.pMin.y) * width;
         return pixels[offset];
     }
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    Float &GetBufferPoint(const Point2i &p) {
-        CHECK(InsideExclusive(p, croppedPixelBounds));
-        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-        int offset = (p.x - croppedPixelBounds.pMin.x) +
-                     (p.y - croppedPixelBounds.pMin.y) * width;
-        return zbuffer[offset];
-    }
-
-    Normal3f &GetNormalPoint(const Point2i &p) {
-        CHECK(InsideExclusive(p, croppedPixelBounds));
-        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-        int offset = (p.x - croppedPixelBounds.pMin.x) +
-                     (p.y - croppedPixelBounds.pMin.y) * width;
-        return normals[offset];
-    }
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
 };
 
 class FilmTile {
   public:
-
     // FilmTile Public Methods
     FilmTile(const Bounds2i &pixelBounds, const Vector2f &filterRadius,
              const Float *filterTable, int filterTableSize,
@@ -223,7 +119,6 @@ class FilmTile {
           maxSampleLuminance(maxSampleLuminance) {
         pixels = std::vector<FilmTilePixel>(std::max(0, pixelBounds.Area()));
     }
-
     void AddSample(const Point2f &pFilm, Spectrum L,
                    Float sampleWeight = 1.) {
         ProfilePhase _(Prof::AddFilmSample);
@@ -279,7 +174,6 @@ class FilmTile {
             (p.x - pixelBounds.pMin.x) + (p.y - pixelBounds.pMin.y) * width;
         return pixels[offset];
     }
-
     Bounds2i GetPixelBounds() const { return pixelBounds; }
 
   private:

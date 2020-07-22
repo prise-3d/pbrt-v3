@@ -20,8 +20,9 @@ Clone the project
 To check out pbrt together with all dependencies, be sure to use the
 `--recursive` flag when cloning the repository, i.e.
 ```bash
-$ git clone --recursive https://github.com/mmp/pbrt-v3/
+$ git clone --recursive https://github.com/prise-3d/pbrt-v3/
 ```
+
 If you accidentally already cloned pbrt without this flag (or to update an
 pbrt source tree after a new submodule has been added, run the following
 command to also fetch the dependencies:
@@ -54,11 +55,10 @@ cd build
 - `--images`: number of images with `n` samples expected as output
 - `--folder`: specific output folder (by default `temp`)
 - `--startindex`: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
-- `--independent`: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
+- `--independent`: boolean which specifies if each generated image are independent (by default) or image convergence is used (samples merge at each new image generated)
 - `--digit`: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
 - `--normals`: boolean which specifies if normals map is saved after generating first image
 - `--zbuffer`: boolean which specifies if Z-Buffer is saved after generating first image
-- `--nn_model`: neural network model python script path if use of adaptive sampling.
 
 **Output information:**
 

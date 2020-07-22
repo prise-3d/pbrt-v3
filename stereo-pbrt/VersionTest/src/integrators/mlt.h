@@ -107,14 +107,8 @@ class MLTSampler : public Sampler {
 class MLTIntegrator : public Integrator {
   public:
     // MLTIntegrator Public Methods
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-    //    MLTIntegrator(std::shared_ptr<const Camera> camera, int maxDepth,
+  //    MLTIntegrator(std::shared_ptr<const Camera> camera, int maxDepth,
     MLTIntegrator(std::shared_ptr<Camera> camera, int maxDepth,
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
                   int nBootstrap, int nChains, int mutationsPerPixel,
                   Float sigma, Float largeStepProbability)
         : camera(camera),
@@ -130,16 +124,16 @@ class MLTIntegrator : public Integrator {
                const std::unordered_map<const Light *, size_t> &lightToIndex,
                MLTSampler &sampler, int k, Point2f *pRaster);
 
+     void reinitFilm(const std::string &outputfilename){
+      Camera *cam = camera.get();
+      cam->film->filename = outputfilename;
+      cam->film->Clear();
+    }
+     
   private:
     // MLTIntegrator Private Data
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-    //std::shared_ptr<const Camera> camera;
+     //    std::shared_ptr<const Camera> camera;
     std::shared_ptr<Camera> camera;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
     const int maxDepth;
     const int nBootstrap;
     const int nChains;
@@ -148,7 +142,8 @@ class MLTIntegrator : public Integrator {
 };
 
 MLTIntegrator *CreateMLTIntegrator(const ParamSet &params,
-                                   std::shared_ptr<const Camera> camera);
+                                   std::shared_ptr<Camera> camera);
+//                                   std::shared_ptr<const Camera> camera);
 
 }  // namespace pbrt
 

@@ -61,7 +61,7 @@ def extract(scene_folder, output):
             # open file and normalize data
             zbuffer_rawls = Rawls.load(file_path)
 
-            zbuffer_rawls.normalize()
+            zbuffer_rawls = zbuffer_rawls.normalize()
             zbuffer_rawls.data = zbuffer_rawls.data * 255
 
             # do not apply gamma conversion

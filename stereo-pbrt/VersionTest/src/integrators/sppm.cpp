@@ -503,15 +503,11 @@ void SPPMIntegrator::Render(const Scene &scene) {
     progress.Done();
 }
 
+
+  
 Integrator *CreateSPPMIntegrator(const ParamSet &params,
-                                ////////////////////////////////////
-                                // PrISE-3D Updates (Stereo/Anim) //
-                                ////////////////////////////////////
-                                 //std::shared_ptr<const Camera> camera) {
-                                std::shared_ptr<Camera> camera) {
-                                ////////////////////////////////
-                                // PrISE-3D End (Stereo/Anim) //
-                                ////////////////////////////////
+                                 std::shared_ptr<Camera> camera) {
+  //                                 std::shared_ptr<const Camera> camera) {
     int nIterations =
         params.FindOneInt("iterations",
                           params.FindOneInt("numiterations", 64));

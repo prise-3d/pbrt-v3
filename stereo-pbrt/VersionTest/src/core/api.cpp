@@ -33,14 +33,8 @@
 // core/api.cpp*
 #include "api.h"
 #include "parallel.h"
-#include "spectrum.h"
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
 #include "paramset.h"
-////////////////////////////////
-// PrISE-3D End (Stereo/Anim) //
-////////////////////////////////
+#include "spectrum.h"
 #include "scene.h"
 #include "film.h"
 #include "medium.h"
@@ -52,14 +46,8 @@
 #include "cameras/environment.h"
 #include "cameras/orthographic.h"
 #include "cameras/perspective.h"
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
 #include "cameras/stereoscopic.h"
 #include "cameras/autostereoscopic.h"
-////////////////////////////////
-// PrISE-3D End (Stereo/Anim) //
-////////////////////////////////
 #include "cameras/realistic.h"
 #include "filters/box.h"
 #include "filters/gaussian.h"
@@ -128,31 +116,17 @@
 #include "textures/wrinkled.h"
 #include "media/grid.h"
 #include "media/homogeneous.h"
-
-
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
 #include "Animation/CameraAnim.hpp"
 
 #include <vector>
 #include <map>
 #include <fstream>
 #include <stdio.h>
-////////////////////////////////
-// PrISE-3D End (Stereo/Anim) //
-////////////////////////////////
 
 namespace pbrt {
 
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
-static void renderSequence(const std::string &filename);
-static void renderImage();
-////////////////////////////////
-// PrISE-3D End (Stereo/Anim) //
-////////////////////////////////
+  static void renderSequence(const std::string &filename);
+  static void renderImage();
 
 // API Global Variables
 Options PbrtOptions;
@@ -403,17 +377,7 @@ static std::vector<GraphicsState> pushedGraphicsStates;
 static std::vector<TransformSet> pushedTransforms;
 static std::vector<uint32_t> pushedActiveTransformBits;
 static TransformCache transformCache;
-
-//////////////////////
-// PrISE-3D Updates //
-//////////////////////
-static std::unique_ptr<RenderInfo> renderInfo;
-//////////////////////////
-// End PrISE-3D Updates //
-//////////////////////////
-
 int catIndentCount = 0;
-
 
 // API Forward Declarations
 std::vector<std::shared_ptr<Shape>> MakeShapes(const std::string &name,
@@ -851,9 +815,6 @@ Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
     else if (name == "environment")
         camera = CreateEnvironmentCamera(paramSet, animatedCam2World, film,
                                          mediumInterface.outside);
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
     else if (name == "stereoscopic")
         camera = CreateStereoscopicCamera(paramSet, animatedCam2World, film,
                                           mediumInterface.outside);
@@ -864,9 +825,8 @@ Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
         Warning("Camera \"%s\" unknown.", name.c_str());
     
     paramSet.ReportUnused();
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
+    
+    return camera;
 }
 
 std::shared_ptr<Sampler> MakeSampler(const std::string &name,
@@ -882,13 +842,7 @@ std::shared_ptr<Sampler> MakeSampler(const std::string &name,
     else if (name == "sobol")
         sampler = CreateSobolSampler(paramSet, film->GetSampleBounds());
     else if (name == "random")
-        //////////////////////
-        // PrISE-3D Updates //
-        //////////////////////
-        sampler = CreateRandomSampler(paramSet, PbrtOptions.samples);
-        //////////////////////////
-        // End PrISE-3D Updates //
-        //////////////////////////
+        sampler = CreateRandomSampler(paramSet);
     else if (name == "stratified")
         sampler = CreateStratifiedSampler(paramSet);
     else
@@ -937,17 +891,6 @@ void pbrtInit(const Options &opt) {
         Error("pbrtInit() has already been called.");
     currentApiState = APIState::OptionsBlock;
     renderOptions.reset(new RenderOptions);
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    
-    // init render information
-    renderInfo.reset(new RenderInfo);
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     graphicsState = GraphicsState();
     catIndentCount = 0;
 
@@ -1036,22 +979,6 @@ void pbrtLookAt(Float ex, Float ey, Float ez, Float lx, Float ly, Float lz,
     VERIFY_INITIALIZED("LookAt");
     Transform lookAt =
         LookAt(Point3f(ex, ey, ez), Point3f(lx, ly, lz), Vector3f(ux, uy, uz));
-
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-
-    // add look at information
-    LookAtParams lookAtParams;
-    lookAtParams.Eye = Point3f(ex, ey, ez);
-    lookAtParams.Target = Point3f(lx, ly, lz);
-    lookAtParams.Up = Vector3f(ux, uy, uz);
-    renderInfo->LookAtParamsInfo = lookAtParams;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     FOR_ACTIVE_TRANSFORMS(curTransform[i] = curTransform[i] * lookAt;);
     if (PbrtOptions.cat || PbrtOptions.toPly)
         printf(
@@ -1111,17 +1038,6 @@ void pbrtPixelFilter(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("PixelFilter");
     renderOptions->FilterName = name;
     renderOptions->FilterParams = params;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // add others informations
-    renderInfo->FilterName = name;
-    renderInfo->FilterParams = params;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sPixelFilter \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1133,17 +1049,6 @@ void pbrtFilm(const std::string &type, const ParamSet &params) {
     VERIFY_OPTIONS("Film");
     renderOptions->FilmParams = params;
     renderOptions->FilmName = type;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // add others informations
-    renderInfo->FilmName = type;
-    renderInfo->FilmParams = params;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sFilm \"%s\" ", catIndentCount, "", type.c_str());
         params.Print(catIndentCount);
@@ -1155,17 +1060,6 @@ void pbrtSampler(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Sampler");
     renderOptions->SamplerName = name;
     renderOptions->SamplerParams = params;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // add others informations
-    renderInfo->SamplerName = name;
-    renderInfo->SamplerParams = params;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sSampler \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1177,17 +1071,6 @@ void pbrtAccelerator(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Accelerator");
     renderOptions->AcceleratorName = name;
     renderOptions->AcceleratorParams = params;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // add others informations
-    renderInfo->AcceleratorName = name;
-    renderInfo->AcceleratorParams = params;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sAccelerator \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1199,17 +1082,6 @@ void pbrtIntegrator(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Integrator");
     renderOptions->IntegratorName = name;
     renderOptions->IntegratorParams = params;
-
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // add others informations
-    renderInfo->IntegratorName = name;
-    renderInfo->IntegratorParams = params;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     if (PbrtOptions.cat || PbrtOptions.toPly) {
         printf("%*sIntegrator \"%s\" ", catIndentCount, "", name.c_str());
         params.Print(catIndentCount);
@@ -1221,17 +1093,6 @@ void pbrtCamera(const std::string &name, const ParamSet &params) {
     VERIFY_OPTIONS("Camera");
     renderOptions->CameraName = name;
     renderOptions->CameraParams = params;
-    
-    //////////////////////
-    // PrISE-3D Updates //
-    //////////////////////
-    // add others informations
-    renderInfo->CameraName = name;
-    renderInfo->CameraParams = params;
-    //////////////////////////
-    // End PrISE-3D Updates //
-    //////////////////////////
-
     renderOptions->CameraToWorld = Inverse(curTransform);
     namedCoordinateSystems["camera"] = renderOptions->CameraToWorld;
     if (PbrtOptions.cat || PbrtOptions.toPly) {
@@ -1760,19 +1621,14 @@ void pbrtWorldEnd() {
         printf("%*sWorldEnd\n", catIndentCount, "");
     } else {
 
-        ////////////////////////////////////
-        // PrISE-3D Updates (Stereo/Anim) //
-        ////////////////////////////////////
+      // déterminer si on rend une seule image ou une séquence
+	std::string name =  renderOptions->CameraParams.FindOneString("animfile", "");
+	std::cout << "fichier camera anim = " << name << std::endl;
 
+	if(name=="") renderImage();
+	else renderSequence(name);
 
-        // déterminer si on rend une seule image ou une séquence
-        std::string name =  renderOptions->CameraParams.FindOneString("animfile", "");
-        std::cout << "fichier camera anim = " << name << std::endl;
-
-        if(name=="") renderImage();
-        else renderSequence(name);
-
-        std::cout << "fin rendu" << std::endl;
+	std::cout << "fin rendu" << std::endl;
 
         MergeWorkerThreadStats();
         ReportThreadStats();
@@ -1782,9 +1638,7 @@ void pbrtWorldEnd() {
             ClearStats();
             ClearProfiler();
         }
-        ////////////////////////////////
-        // PrISE-3D End (Stereo/Anim) //
-        ////////////////////////////////
+
 
         CHECK_EQ(CurrentProfilerState(), ProfToBits(Prof::IntegratorRender));
         ProfilerState = ProfToBits(Prof::SceneConstruction);
@@ -1816,16 +1670,6 @@ void pbrtWorldEnd() {
                                  namedCoordinateSystems.end());
 }
 
-//////////////////////
-// PrISE-3D Updates //
-//////////////////////
-RenderInfo* pbrtRenderInfo(){
-    return renderInfo.get();
-}
-//////////////////////////
-// End PrISE-3D Updates //
-//////////////////////////
-
 Scene *RenderOptions::MakeScene() {
     std::shared_ptr<Primitive> accelerator =
         MakeAccelerator(AcceleratorName, std::move(primitives), AcceleratorParams);
@@ -1838,17 +1682,8 @@ Scene *RenderOptions::MakeScene() {
 }
 
 Integrator *RenderOptions::MakeIntegrator() const {
-
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
-
-    //    std::shared_ptr<const Camera> camera(MakeCamera());
+  //    std::shared_ptr<const Camera> camera(MakeCamera());
     std::shared_ptr<Camera> camera(MakeCamera());
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
-
     if (!camera) {
         Error("Unable to create camera");
         return nullptr;
@@ -1908,21 +1743,14 @@ Camera *RenderOptions::MakeCamera() const {
         Error("Unable to create film.");
         return nullptr;
     }
-
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
     std::cout << "CTW[0] = " << CameraToWorld[0] << std::endl;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
-
-
     Camera *camera = pbrt::MakeCamera(CameraName, CameraParams, CameraToWorld,
                                   renderOptions->transformStartTime,
                                   renderOptions->transformEndTime, film);
     return camera;
 }
+
+
 
 /**
  * Fonction de rendu d'une seule image
@@ -1946,9 +1774,6 @@ Camera *RenderOptions::MakeCamera() const {
 
  }
 
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
 
 /**
  * Fonction permettant de reconstruire un nom de fichier contenant le numéro de
@@ -2058,8 +1883,8 @@ Camera *RenderOptions::MakeCamera() const {
    std::cout << "fin rendu séquence" << std::endl;
  }//renderSequence
 
-////////////////////////////////
-// PrISE-3D End (Stereo/Anim) //
-////////////////////////////////
 
+
+  
 }  // namespace pbrt
+

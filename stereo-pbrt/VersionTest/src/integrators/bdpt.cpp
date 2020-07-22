@@ -534,16 +534,12 @@ Spectrum ConnectBDPT(
     return L;
 }
 
+
+
 BDPTIntegrator *CreateBDPTIntegrator(const ParamSet &params,
                                      std::shared_ptr<Sampler> sampler,
-                                    ////////////////////////////////////
-                                    // PrISE-3D Updates (Stereo/Anim) //
-                                    ////////////////////////////////////
-                                     //std::shared_ptr<const Camera> camera) {
-                                    std::shared_ptr<Camera> camera) {
-                                    ////////////////////////////////
-                                    // PrISE-3D End (Stereo/Anim) //
-                                    ////////////////////////////////
+                                     std::shared_ptr<Camera> camera) {
+  //                                     std::shared_ptr<const Camera> camera) {
     int maxDepth = params.FindOneInt("maxdepth", 5);
     bool visualizeStrategies = params.FindOneBool("visualizestrategies", false);
     bool visualizeWeights = params.FindOneBool("visualizeweights", false);

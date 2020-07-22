@@ -53,14 +53,8 @@ class DirectLightingIntegrator : public SamplerIntegrator {
   public:
     // DirectLightingIntegrator Public Methods
     DirectLightingIntegrator(LightStrategy strategy, int maxDepth,
-                            ////////////////////////////////////
-                            // PrISE-3D Updates (Stereo/Anim) //
-                            ////////////////////////////////////
-                            //std::shared_ptr<const Camera> camera,
-                            std::shared_ptr<Camera> camera,
-                            ////////////////////////////////
-                            // PrISE-3D End (Stereo/Anim) //
-                            ////////////////////////////////
+                             std::shared_ptr<Camera> camera,
+			     //                             std::shared_ptr<const Camera> camera,
                              std::shared_ptr<Sampler> sampler,
                              const Bounds2i &pixelBounds)
         : SamplerIntegrator(camera, sampler, pixelBounds),
@@ -79,7 +73,8 @@ class DirectLightingIntegrator : public SamplerIntegrator {
 
 DirectLightingIntegrator *CreateDirectLightingIntegrator(
     const ParamSet &params, std::shared_ptr<Sampler> sampler,
-    std::shared_ptr<const Camera> camera);
+    std::shared_ptr<Camera> camera);
+//    std::shared_ptr<const Camera> camera);
 
 }  // namespace pbrt
 

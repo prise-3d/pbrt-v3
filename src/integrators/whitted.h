@@ -49,7 +49,14 @@ namespace pbrt {
 class WhittedIntegrator : public SamplerIntegrator {
   public:
     // WhittedIntegrator Public Methods
-    WhittedIntegrator(int maxDepth, std::shared_ptr<const Camera> camera,
+    ////////////////////////////////////
+    // PrISE-3D Updates (Stereo/Anim) //
+    ////////////////////////////////////
+    //WhittedIntegrator(int maxDepth, std::shared_ptr<const Camera> camera,
+    WhittedIntegrator(int maxDepth, std::shared_ptr<Camera> camera,
+    ////////////////////////////////
+    // PrISE-3D End (Stereo/Anim) //
+    ////////////////////////////////
                       std::shared_ptr<Sampler> sampler,
                       const Bounds2i &pixelBounds)
         : SamplerIntegrator(camera, sampler, pixelBounds), maxDepth(maxDepth) {}
@@ -63,7 +70,14 @@ class WhittedIntegrator : public SamplerIntegrator {
 
 WhittedIntegrator *CreateWhittedIntegrator(
     const ParamSet &params, std::shared_ptr<Sampler> sampler,
-    std::shared_ptr<const Camera> camera);
+    ////////////////////////////////////
+    // PrISE-3D Updates (Stereo/Anim) //
+    ////////////////////////////////////
+    //std::shared_ptr<const Camera> camera);
+    std::shared_ptr<Camera> camera);
+    ////////////////////////////////
+    // PrISE-3D End (Stereo/Anim) //
+    ////////////////////////////////
 
 }  // namespace pbrt
 

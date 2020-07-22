@@ -46,30 +46,16 @@
 #include "reflection.h"
 #include "sampler.h"
 #include "material.h"
-
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
 #include "camera.h"
-////////////////////////////////
-// PrISE-3D End (Stereo/Anim) //
-////////////////////////////////
 
 namespace pbrt {
-
 // Integrator Declarations
 class Integrator {
   public:
     // Integrator Interface
     virtual ~Integrator();
     virtual void Render(const Scene &scene) = 0;
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
     virtual void reinitFilm(const std::string &outputfilename) = 0;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
 };
 
 Spectrum UniformSampleAllLights(const Interaction &it, const Scene &scene,
@@ -92,7 +78,8 @@ std::unique_ptr<Distribution1D> ComputeLightPowerDistribution(
 class SamplerIntegrator : public Integrator {
   public:
     // SamplerIntegrator Public Methods
-    SamplerIntegrator(std::shared_ptr<const Camera> camera,
+  //    SamplerIntegrator(std::shared_ptr<const Camera> camera,
+    SamplerIntegrator(std::shared_ptr<Camera> camera,
                       std::shared_ptr<Sampler> sampler,
                       const Bounds2i &pixelBounds)
         : camera(camera), sampler(sampler), pixelBounds(pixelBounds) {}
@@ -110,28 +97,18 @@ class SamplerIntegrator : public Integrator {
                               const Scene &scene, Sampler &sampler,
                               MemoryArena &arena, int depth) const;
 
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
+
     void reinitFilm(const std::string &outputfilename){
       Camera *cam = camera.get();
       cam->film->filename = outputfilename;
       cam->film->Clear();
     }
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
+
+
   protected:
     // SamplerIntegrator Protected Data
-  
-    ////////////////////////////////////
-    // PrISE-3D Updates (Stereo/Anim) //
-    ////////////////////////////////////
     //    std::shared_ptr<const Camera> camera;
     std::shared_ptr<Camera> camera;
-    ////////////////////////////////
-    // PrISE-3D End (Stereo/Anim) //
-    ////////////////////////////////
 
   private:
     // SamplerIntegrator Private Data
@@ -139,6 +116,5 @@ class SamplerIntegrator : public Integrator {
     const Bounds2i pixelBounds;
 };
 
-}  // namespace pbrt
-
+}
 #endif  // PBRT_CORE_INTEGRATOR_H
