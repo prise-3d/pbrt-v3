@@ -49,7 +49,14 @@ class AOIntegrator : public SamplerIntegrator {
   public:
     // AOIntegrator Public Methods
     AOIntegrator(bool cosSample, int nSamples,
-                 std::shared_ptr<const Camera> camera,
+                ////////////////////////////////////
+                // PrISE-3D Updates (Stereo/Anim) //
+                ////////////////////////////////////
+                 //std::shared_ptr<const Camera> camera,
+                 std::shared_ptr<Camera> camera,
+                ////////////////////////////////
+                // PrISE-3D End (Stereo/Anim) //
+                ////////////////////////////////
                  std::shared_ptr<Sampler> sampler,
                  const Bounds2i &pixelBounds);
     Spectrum Li(const RayDifferential &ray, const Scene &scene,

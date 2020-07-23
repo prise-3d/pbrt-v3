@@ -130,6 +130,18 @@ class MLTIntegrator : public Integrator {
                const std::unordered_map<const Light *, size_t> &lightToIndex,
                MLTSampler &sampler, int k, Point2f *pRaster);
 
+    ////////////////////////////////////
+    // PrISE-3D Updates (Stereo/Anim) //
+    ////////////////////////////////////
+    void reinitFilm(const std::string &outputfilename){
+      Camera *cam = camera.get();
+      cam->film->filename = outputfilename;
+      cam->film->Clear();
+    }
+    ////////////////////////////////
+    // PrISE-3D End (Stereo/Anim) //
+    ////////////////////////////////
+
   private:
     // MLTIntegrator Private Data
     ////////////////////////////////////
@@ -148,7 +160,14 @@ class MLTIntegrator : public Integrator {
 };
 
 MLTIntegrator *CreateMLTIntegrator(const ParamSet &params,
-                                   std::shared_ptr<const Camera> camera);
+                                  ////////////////////////////////////
+                                  // PrISE-3D Updates (Stereo/Anim) //
+                                  ////////////////////////////////////
+                                   //std::shared_ptr<const Camera> camera);
+                                   std::shared_ptr<Camera> camera);
+                                  ////////////////////////////////
+                                  // PrISE-3D End (Stereo/Anim) //
+                                  ////////////////////////////////
 
 }  // namespace pbrt
 

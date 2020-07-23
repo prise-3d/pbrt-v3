@@ -79,7 +79,14 @@ class DirectLightingIntegrator : public SamplerIntegrator {
 
 DirectLightingIntegrator *CreateDirectLightingIntegrator(
     const ParamSet &params, std::shared_ptr<Sampler> sampler,
-    std::shared_ptr<const Camera> camera);
+    ////////////////////////////////////
+    // PrISE-3D Updates (Stereo/Anim) //
+    ////////////////////////////////////
+    //std::shared_ptr<const Camera> camera);
+    std::shared_ptr<Camera> camera);
+    ////////////////////////////////
+    // PrISE-3D End (Stereo/Anim) //
+    ////////////////////////////////
 
 }  // namespace pbrt
 

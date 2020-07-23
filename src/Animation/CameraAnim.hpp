@@ -31,6 +31,7 @@ private:
   std::vector <Vector3f> up;
   int curvp;// indice du point de vue courant
   int numberOfFrames; // nombre de frames composant la séquence
+  int firstFrame, lastFrame;// début et fin de l'intervalle de calcul
 public:
   CameraAnim();
   CameraAnim(std::string filename);

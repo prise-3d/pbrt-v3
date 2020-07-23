@@ -138,6 +138,7 @@
 #include <vector>
 #include <map>
 #include <fstream>
+#include <sstream>
 #include <stdio.h>
 ////////////////////////////////
 // PrISE-3D End (Stereo/Anim) //
@@ -864,6 +865,7 @@ Camera *MakeCamera(const std::string &name, const ParamSet &paramSet,
         Warning("Camera \"%s\" unknown.", name.c_str());
     
     paramSet.ReportUnused();
+    return camera;
     ////////////////////////////////
     // PrISE-3D End (Stereo/Anim) //
     ////////////////////////////////
@@ -1924,6 +1926,11 @@ Camera *RenderOptions::MakeCamera() const {
     return camera;
 }
 
+
+////////////////////////////////////
+// PrISE-3D Updates (Stereo/Anim) //
+////////////////////////////////////
+
 /**
  * Fonction de rendu d'une seule image
  */
@@ -1946,14 +1953,16 @@ Camera *RenderOptions::MakeCamera() const {
 
  }
 
-////////////////////////////////////
-// PrISE-3D Updates (Stereo/Anim) //
-////////////////////////////////////
-
 /**
  * Fonction permettant de reconstruire un nom de fichier contenant le numéro de
  * la frame calculée, sur un nombre de digit égal à celui nécessaire à la
- * représentation du nombre total de frames
+ * représentation du nombre total de frames. Les formats de sortie des noms de fichier
+ * seront alors les suivants :
+ * caméra non stéréoscopique : commonfilenameXXX.ext (XXX = numéro de frame)
+ * caméra stéréoscopique     : commonfilename-VVV-XXX.ext (VVV = left ou right ;
+ *                                                         XXX = numéro de frame)
+ * caméra autostéréoscopique : commonfilename-VV-XXX.ext (VV = numéro de vue ;
+ *                                                         XXX = numéro de frame)
  */
  std::string getName(const std::string &commonfilename, int frameId, int nbFrames){
    static int lgId = 0;
@@ -1982,14 +1991,57 @@ Camera *RenderOptions::MakeCamera() const {
 
    return filename;
  }
- 
+
+  
+  /**
+   * Generation d'un nom de fichier commun pour les images d'une animation
+   * dans le cas d'une caméra stéréoscopique ou autostéreoscopique.
+   * Les formats de sortie seront les suivants :
+   * stéréoscopique : commonName-left.ext ou commonName-right.ext
+   * autostéréoscopique : commonName-xx.ext, avec xx le numéro de la vue
+   * Dans le cas où une seule image est utilisée (pas d'animation)
+   * le nom de fichier est mis à jour dans les caméras au moment de leur création.
+   */
+  void updateNameIfStereo(std::string &commonName, const std::string &cameraName){
+    
+    if(cameraName=="stereoscopic"){
+      std::string view = renderOptions->CameraParams.FindOneString("view", "");
+      if(view!="left" && view !="right") view = "left";
+      std::string extension = "-"+view;
+      size_t pos = commonName.find_last_of('.');// position de l'extension
+      if(pos==std::string::npos)
+	commonName.append(extension);
+      else
+	commonName.insert(pos, extension);
+      return;
+    }
+      
+    if(cameraName=="autostereoscopic"){
+      int nbView = renderOptions->CameraParams.FindOneInt("nbview", 8);
+      if(nbView<=0) nbView = 8;  
+      int view = renderOptions->CameraParams.FindOneInt("view", 1);
+      if(view<=0 || view >nbView) view = 1;
+      std::stringstream extension;
+      extension << "-";
+      if (view <10) extension << "0"; // H : nbView < 100
+      extension << view << "-";
+      size_t pos = commonName.find_last_of('.');// position de l'extension
+      if(pos==std::string::npos)
+	commonName.append(extension.str());
+      else
+	commonName.insert(pos, extension.str());
+      return;
+    }
+    
+  }// updateNameIfStereo
+  
  /**
   * Fonction de rendu d'une série d'images, dont les points de vue
   * sont contenus dans le fichier passé en paramètre
   */
- void renderSequence(const std::string &filename){
+  void renderSequence(const std::string &filename){
 
-   std::cout << "début rendu séquence" << std::endl;
+    std::cout << "début rendu séquence" << std::endl;
 
    // récupérer les points de vue de la caméra
    CameraAnim ac(filename);
@@ -2012,6 +2064,10 @@ Camera *RenderOptions::MakeCamera() const {
 
    // récupération du nom de fichier commun 
    std::string commonName = renderOptions->FilmParams.FindOneString("filename", "");
+   // vérifier si on a une caméra stéréoscopique ou autostéréoscopique
+   // et ajouter la vue correspondante dans le nom commun
+   updateNameIfStereo(commonName, renderOptions->CameraName);
+     
 
    // création de l'intégrateur (il a besoin du premier point de vue, 
    // stocké dans CameraToWorld, pour initialiser la caméra)
@@ -2057,6 +2113,7 @@ Camera *RenderOptions::MakeCamera() const {
    }
    std::cout << "fin rendu séquence" << std::endl;
  }//renderSequence
+
 
 ////////////////////////////////
 // PrISE-3D End (Stereo/Anim) //

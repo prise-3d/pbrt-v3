@@ -70,6 +70,18 @@ class SPPMIntegrator : public Integrator {
           writeFrequency(writeFrequency) {}
     void Render(const Scene &scene);
 
+    ////////////////////////////////////
+    // PrISE-3D Updates (Stereo/Anim) //
+    ////////////////////////////////////
+    void reinitFilm(const std::string &outputfilename){
+      Camera *cam = camera.get();
+      cam->film->filename = outputfilename;
+      cam->film->Clear();
+    }
+    ////////////////////////////////
+    // PrISE-3D End (Stereo/Anim) //
+    ////////////////////////////////
+
   private:
     // SPPMIntegrator Private Data
     ////////////////////////////////////

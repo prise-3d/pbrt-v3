@@ -13,9 +13,10 @@ CameraAnim::CameraAnim(){
 CameraAnim::CameraAnim(std::string filename){
   curvp = 0;
   numberOfFrames = 0;
+  firstFrame = lastFrame = -1;
   if(!load(filename)){
-    std::cout << "CameraAnim : ";
-    std::cout << "erreur chargement fichier " << filename << std::endl;
+    std::cerr << "CameraAnim : ";
+    std::cerr << "erreur chargement fichier " << filename << std::endl;
   }
 }
 
@@ -33,6 +34,7 @@ bool CameraAnim::load(std::string filename){
     if(s=="numberOfFrames"){
       in >> s;
       numberOfFrames = stoi(s);
+      firstFrame = 1; lastFrame = numberOfFrames;
     } else if(s=="LookAt"){
       float x, y, z;
       in >> x >> y >> z;
@@ -41,6 +43,13 @@ bool CameraAnim::load(std::string filename){
       look.push_back(Point3f(x, y, z));
       in >> x >> y >> z;
       up.push_back(Vector3f(x, y, z));
+    } else if(s=="interval"){
+      in >> firstFrame >> lastFrame;
+      if((firstFrame < 0) || (firstFrame > lastFrame) || (lastFrame>numberOfFrames)){
+	in.close();
+	return false;
+      }
+      curvp = firstFrame-1;
     } else {
       getline(in, s);
     }
@@ -65,7 +74,7 @@ bool CameraAnim::load(std::string filename){
 }
 
 bool CameraAnim::getViewpoint(Point3f &at, Point3f &to, Vector3f &up){
-  if(curvp<numberOfFrames){
+  if(curvp<lastFrame){
     at = pos[curvp];
     to = look[curvp];
     up = this->up[curvp];
@@ -75,6 +84,7 @@ bool CameraAnim::getViewpoint(Point3f &at, Point3f &to, Vector3f &up){
 
   return false;
 }
+
 
 void CameraAnim::interpolCamerasLocation(){
 

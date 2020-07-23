@@ -466,6 +466,7 @@ FILE ( GLOB PBRT_SOURCE
   src/shapes/*
   src/textures/*
   src/media/*
+  src/Animation/*
   )
 
 INCLUDE_DIRECTORIES ( src )
@@ -509,7 +510,7 @@ SET ( PBRT_CXX11_FEATURES
 )
 TARGET_COMPILE_FEATURES ( pbrt PRIVATE ${PBRT_CXX11_FEATURES})
 # TARGET_LINK_LIBRARIES ( pbrt "${TORCH_LIBRARIES}")
-SET_PROPERTY (TARGET pbrt PROPERTY CXX_STANDARD 11)
+# SET_PROPERTY (TARGET pbrt PROPERTY CXX_STANDARD 11)
 
 IF (WIN32)
   # Avoid a name clash when building on Visual Studio

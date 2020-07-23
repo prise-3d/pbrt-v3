@@ -266,7 +266,6 @@ void MLTIntegrator::Render(const Scene &scene) {
 }
 
 MLTIntegrator *CreateMLTIntegrator(const ParamSet &params,
-                                   // std::shared_ptr<const Camera> camera) {
                                     ////////////////////////////////////
                                     // PrISE-3D Updates (Stereo/Anim) //
                                     ////////////////////////////////////
