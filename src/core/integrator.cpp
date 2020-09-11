@@ -45,6 +45,9 @@
 #include "scene.h"
 #include "stats.h"
 
+#include <iostream>
+#include <fstream>
+
 namespace pbrt {
 
 STAT_COUNTER("Integrator/Camera rays traced", nCameraRays);
@@ -379,18 +382,25 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                         // always update buffer and normals information for first image and first sample
                         // if ((PbrtOptions.zbuffer || PbrtOptions.normals) && i == startImagesIndex){
-                        if (i == startImagesIndex && j == 1) {
-                            // only if current pixel is in output image
-                            // resolution
-                            if ((pixel.x > 0 &&  pixel.x < fullResolution.x) &&  (pixel.y > 0 && pixel.y < fullResolution.y)) {
-                                // get intersection information
-                                std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
-                                scene.Intersect(ray, isect.get());
+                        // if (i == startImagesIndex && j == 1) {
+                        //     // only if current pixel is in output image
+                        //     // resolution
+                        //     if ((pixel.x > 0 &&  pixel.x < fullResolution.x) &&  (pixel.y > 0 && pixel.y < fullResolution.y)) {
+                        //         // get intersection information
+                        //         std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
+                        //         scene.Intersect(ray, isect.get());
 
-                                // update zbuffer and normals data
-                                camera->film->UpdateAdditionals(pixel, ray);
-                            }
-                        }
+                        //         // update zbuffer and normals data
+                        //         camera->film->UpdateAdditionals(pixel, ray);
+                        //     }
+                        // }
+
+                        std::ofstream fout;
+                        fout.open("ray_data.csv", std::ios::app);
+                        Float rgb[3];
+                        L.ToRGB(rgb);
+                        fout << pixel.x << ";" << pixel.y << ";" << rgb[0]  << ";" << rgb[1] << ";" << rgb[2] << std::endl;
+                        fout.close();
 
                         //////////////////////////
                         // End PrISE-3D Updates //

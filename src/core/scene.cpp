@@ -35,6 +35,9 @@
 #include "scene.h"
 #include "stats.h"
 
+#include <iostream>
+#include <fstream>
+
 namespace pbrt {
 
 STAT_COUNTER("Intersections/Regular ray intersection tests",
@@ -56,6 +59,11 @@ bool Scene::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
 		ray.p = isect->p;
 		ray.u = isect->uv.x;
 		ray.v = isect->uv.y;
+
+    std::ofstream fout;
+    fout.open("ray_data.csv", std::ios::app);
+    fout << ray.p.x << ";" << ray.p.y << ";" << ray.p.z << ";";
+    fout.close();
 
     // return results;
     return results;
