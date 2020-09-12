@@ -59,6 +59,60 @@
 
 namespace pbrt {
 
+
+class FilmTilePixelMoN {
+
+    public:
+
+        unsigned k; // number of means clusters
+        unsigned index; // keep track of index used
+        
+        std::vector<Float> rvalues; // store sum of r lightness
+        std::vector<Float> gvalues; // store sum of g lightness
+        std::vector<Float> bvalues; // store sum of b lightness
+
+        std::vector<Float> weights; // store sum of lightness
+        std::vector<unsigned> counters; // number of elements
+
+        FilmTilePixelMoN(unsigned _k = 9){
+            k = _k;
+            index = 0;
+
+            rvalues = std::vector<Float>(k);
+            gvalues = std::vector<Float>(k);
+            bvalues = std::vector<Float>(k);
+
+            weights = std::vector<Float>(k);
+
+            counters = std::vector<unsigned>(k);
+
+            for (int i = 0; i < k; i++){
+                rvalues[i] = Float(0.);
+                gvalues[i] = Float(0.);
+                bvalues[i] = Float(0.);
+                weights[i] = Float(0.);
+                counters[i] = 0;
+            }
+        }
+
+        void add(Spectrum sample, Float weight){
+            
+            Float rgb[3];
+            sample.ToRGB(rgb);
+
+            rvalues.at(index) += rgb[0];
+            gvalues.at(index) += rgb[1];
+            bvalues.at(index) += rgb[2];
+            weights.at(index) += weight;
+            counters.at(index) += 1;
+            
+            index += 1;
+
+            if (index >= k)
+                index = 0;
+        }
+};
+
 // FilmTilePixel Declarations
 struct FilmTilePixel {
     Spectrum contribSum = 0.f;
@@ -142,6 +196,108 @@ class Film {
     //////////////////////////
 
   private:
+    
+    struct PixelMoN {
+
+        PixelMoN(unsigned _k = 9) { 
+            k = _k;
+            index = 0;
+
+            rvalues = std::vector<Float>(k);
+            gvalues = std::vector<Float>(k);
+            bvalues = std::vector<Float>(k);
+
+            weights = std::vector<Float>(k);
+
+            counters = std::vector<unsigned>(k);
+
+            for (int i = 0; i < k; i++){
+                rvalues[i] = Float(0.);
+                gvalues[i] = Float(0.);
+                bvalues[i] = Float(0.);
+                weights[i] = Float(0.);
+                counters[i] = 0;
+            }
+        }
+
+        AtomicFloat splatXYZ[3];
+        Float filterWeightSum;
+
+        unsigned k; // number of means clusters
+        unsigned index; // keep track of index used
+        
+        std::vector<Float> rvalues; // store sum of r lightness
+        std::vector<Float> gvalues; // store sum of g lightness
+        std::vector<Float> bvalues; // store sum of b lightness
+
+        std::vector<Float> weights; // store sum of lightness
+        std::vector<unsigned> counters; // number of elements
+        Float xyz[3];
+
+        void append(FilmTilePixelMoN tile) {
+
+            for (int i = 0; i < k; i++){
+                rvalues[i] += tile.rvalues[i];
+                gvalues[i] += tile.gvalues[i];
+                bvalues[i] += tile.bvalues[i];
+
+                weights[i] += tile.weights[i];
+
+                counters[i] += tile.counters[i];                
+            }
+        }
+
+        void estimateRGB() {
+
+            Float rgb[3];
+
+            rgb[0] = estimate(rvalues);
+            rgb[1] = estimate(rvalues);
+            rgb[2] = estimate(rvalues);
+
+            Float weight = estimate(weights);
+
+            rgb[0] /= weight;
+            rgb[1] /= weight;
+            rgb[2] /= weight;
+
+            Float currentXYZ[3];
+
+            RGBToXYZ(rgb, currentXYZ);
+
+            xyz[0] = currentXYZ[0];
+            xyz[1] = currentXYZ[1];
+            xyz[2] = currentXYZ[2];
+        }
+
+        void estimateWeight(Float weight) const{
+            
+            weight = estimate(weights);
+        }
+
+        Float estimate(std::vector<Float> cvalues) const{
+
+            std::vector<Float> means;
+
+            unsigned nElements = cvalues.size();
+
+            for (unsigned i = 0; i < nElements; i++){
+                means.push_back(cvalues[i] / counters[i]);
+            }
+
+            std::sort(means.begin(), means.end()); 
+
+            // compute median from means
+            if (nElements % 2 == 1){
+                return means[int(nElements/2)];
+            }
+            else{
+                int k_mean = int(nElements/2);
+                return (means[k_mean - 1] + means[k_mean]) / 2;
+            }
+        }
+    };
+
     // Film Private Data
     struct Pixel {
         Pixel() { xyz[0] = xyz[1] = xyz[2] = filterWeightSum = 0; }
@@ -150,7 +306,7 @@ class Film {
         AtomicFloat splatXYZ[3];
         Float pad;
     };
-    std::unique_ptr<Pixel[]> pixels;
+    std::unique_ptr<PixelMoN[]> pixels;
     static PBRT_CONSTEXPR int filterTableWidth = 32; // TODO check if really 32 ?
     Float filterTable[filterTableWidth * filterTableWidth];
     std::mutex mutex;
@@ -167,7 +323,15 @@ class Film {
     //////////////////////////
 
     // Film Private Methods
-    Pixel &GetPixel(const Point2i &p) {
+    // Pixel &GetPixel(const Point2i &p) {
+    //     CHECK(InsideExclusive(p, croppedPixelBounds));
+    //     int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+    //     int offset = (p.x - croppedPixelBounds.pMin.x) +
+    //                  (p.y - croppedPixelBounds.pMin.y) * width;
+    //     return pixels[offset];
+    // }
+
+    PixelMoN &GetPixel(const Point2i &p) {
         CHECK(InsideExclusive(p, croppedPixelBounds));
         int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
         int offset = (p.x - croppedPixelBounds.pMin.x) +
@@ -211,7 +375,7 @@ class FilmTile {
           filterTable(filterTable),
           filterTableSize(filterTableSize),
           maxSampleLuminance(maxSampleLuminance) {
-        pixels = std::vector<FilmTilePixel>(std::max(0, pixelBounds.Area()));
+        pixels = std::vector<FilmTilePixelMoN>(std::max(0, pixelBounds.Area()));
     }
 
     void AddSample(const Point2f &pFilm, Spectrum L,
@@ -249,20 +413,23 @@ class FilmTile {
                 Float filterWeight = filterTable[offset];
 
                 // Update pixel values with filtered sample contribution
-                FilmTilePixel &pixel = GetPixel(Point2i(x, y));
-                pixel.contribSum += L * sampleWeight * filterWeight;
-                pixel.filterWeightSum += filterWeight;
+                // FilmTilePixel &pixel = GetPixel(Point2i(x, y));
+                // pixel.contribSum += L * sampleWeight * filterWeight;
+                // pixel.filterWeightSum += filterWeight;
+                FilmTilePixelMoN &pixel = GetPixel(Point2i(x, y));
+                pixel.add(L * sampleWeight * filterWeight, filterWeight); // TODO : check if use of weight
+
             }
         }
     }
-    FilmTilePixel &GetPixel(const Point2i &p) {
+    FilmTilePixelMoN &GetPixel(const Point2i &p) {
         CHECK(InsideExclusive(p, pixelBounds));
         int width = pixelBounds.pMax.x - pixelBounds.pMin.x;
         int offset =
             (p.x - pixelBounds.pMin.x) + (p.y - pixelBounds.pMin.y) * width;
         return pixels[offset];
     }
-    const FilmTilePixel &GetPixel(const Point2i &p) const {
+    const FilmTilePixelMoN &GetPixel(const Point2i &p) const {
         CHECK(InsideExclusive(p, pixelBounds));
         int width = pixelBounds.pMax.x - pixelBounds.pMin.x;
         int offset =
@@ -278,7 +445,7 @@ class FilmTile {
     const Vector2f filterRadius, invFilterRadius;
     const Float *filterTable;
     const int filterTableSize;
-    std::vector<FilmTilePixel> pixels;
+    std::vector<FilmTilePixelMoN> pixels;
     const Float maxSampleLuminance;
     friend class Film;
 };
