@@ -161,6 +161,11 @@ int main(int argc, char *argv[]) {
                  usage("missing value after --raytracking argument");
             options.rayTracking = argv[++i];
         }
+        else if (!strcmp(argv[i], "--llimit") || !strcmp(argv[i], "-llimit")) {
+             if (i + 1 == argc)
+                 usage("missing value after --llimit argument");
+            options.lightnessLimit = atoi(argv[++i]);
+        }
         else if (!strcmp(argv[i], "--digits") || !strcmp(argv[i], "-digits")) {
              if (i + 1 == argc)
                  usage("missing value after --digits argument");
