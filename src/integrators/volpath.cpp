@@ -52,6 +52,13 @@ void VolPathIntegrator::Preprocess(const Scene &scene, Sampler &sampler) {
         CreateLightSampleDistribution(lightSampleStrategy, scene);
 }
 
+
+Spectrum VolPathIntegrator::Li(const RayDifferential &ray, const Scene &scene,
+                        Sampler &sampler, MemoryArena &arena,
+                        std::vector<Point3f> &bounces, int depth) const {
+    return Li(ray, scene, sampler, arena, depth);
+}
+
 Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                                Sampler &sampler, MemoryArena &arena,
                                int depth) const {

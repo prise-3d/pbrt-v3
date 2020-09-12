@@ -60,11 +60,6 @@ bool Scene::Intersect(const Ray &ray, SurfaceInteraction *isect) const {
 		ray.u = isect->uv.x;
 		ray.v = isect->uv.y;
 
-    std::ofstream fout;
-    fout.open("ray_data.csv", std::ios::app);
-    fout << ray.p.x << ";" << ray.p.y << ";" << ray.p.z << ";";
-    fout.close();
-
     // return results;
     return results;
     //////////////////////////

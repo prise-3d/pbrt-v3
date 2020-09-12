@@ -40,6 +40,13 @@
 
 namespace pbrt {
 
+Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
+                        Sampler &sampler, MemoryArena &arena,
+                        std::vector<Point3f> &bounces, int depth) const {
+    return Li(ray, scene, sampler, arena, depth);
+}
+
+
 // WhittedIntegrator Method Definitions
 Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
                                Sampler &sampler, MemoryArena &arena,

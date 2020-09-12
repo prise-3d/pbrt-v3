@@ -61,6 +61,11 @@ class VolPathIntegrator : public SamplerIntegrator {
     Spectrum Li(const RayDifferential &ray, const Scene &scene,
                 Sampler &sampler, MemoryArena &arena, int depth) const;
 
+    Spectrum Li(const RayDifferential &ray, const Scene &scene,
+                    Sampler &sampler, MemoryArena &arena,
+                    std::vector<Point3f> &bounces, int depth = 0) const;
+
+
   private:
     // VolPathIntegrator Private Data
     const int maxDepth;

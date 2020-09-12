@@ -54,6 +54,13 @@ AOIntegrator::AOIntegrator(bool cosSample, int ns,
     sampler->Request2DArray(nSamples);
 }
 
+Spectrum AOIntegrator::Li(const RayDifferential &ray, const Scene &scene,
+                        Sampler &sampler, MemoryArena &arena,
+                        std::vector<Point3f> &bounces, int depth) const {
+    return Li(ray, scene, sampler, arena, depth);
+}
+
+
 Spectrum AOIntegrator::Li(const RayDifferential &r, const Scene &scene,
                           Sampler &sampler, MemoryArena &arena,
                           int depth) const {

@@ -196,6 +196,8 @@ struct Options {
     bool useOfDLModel = false; // specify if a model is used or not 
     int runDLEvery = 5; // Default each nb samples model is runned
     int DLConfidence = 0.5; // use at 50% the result of the model when denoising samples
+    std::string rayTracking = ""; // output folder for ray tracking
+    int lightnessLimit = 1000; // lightness limit to store ray information
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////

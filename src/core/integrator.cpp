@@ -230,6 +230,7 @@ std::unique_ptr<Distribution1D> ComputeLightPowerDistribution(
         new Distribution1D(&lightPower[0], lightPower.size()));
 }
 
+
 // SamplerIntegrator Method Definitions
 void SamplerIntegrator::Render(const Scene &scene) {
     // Preprocess(scene, *sampler);
@@ -242,6 +243,10 @@ void SamplerIntegrator::Render(const Scene &scene) {
     // check if necessary to use DL module
     if (PbrtOptions.nn_path.length() > 0) {
         PbrtOptions.useOfDLModel = true;
+    }
+
+    if (PbrtOptions.rayTracking.length() > 0){
+        mkdir(PbrtOptions.rayTracking.c_str(), 0775);
     }
 
     srand(time(0));
@@ -338,7 +343,12 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                         // Evaluate radiance along camera ray
                         Spectrum L(0.f);
-                        if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena);
+
+                        // P3D updates
+                        std::vector<Point3f> pbounces;
+
+                        //if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena);
+                        if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena, pbounces);
 
                         // Issue warning if unexpected radiance value
                         // returned
@@ -395,12 +405,32 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         //     }
                         // }
 
-                        std::ofstream fout;
-                        fout.open("ray_data.csv", std::ios::app);
-                        Float rgb[3];
-                        L.ToRGB(rgb);
-                        fout << pixel.x << ";" << pixel.y << ";" << rgb[0]  << ";" << rgb[1] << ";" << rgb[2] << std::endl;
-                        fout.close();
+                        if (PbrtOptions.rayTracking.length() > 0){
+
+                            Float rgb[3];
+                            L.ToRGB(rgb);
+
+                            if (rgb[0] > PbrtOptions.lightnessLimit || rgb[1] > PbrtOptions.lightnessLimit || rgb[2] > PbrtOptions.lightnessLimit) {
+                                
+                                // store data into
+                                std::ofstream fout(PbrtOptions.rayTracking + "/ray_data" + std::to_string(tile.x) + "_" + std::to_string(tile.y) + ".csv", std::ios::app);
+                                
+                                // add pixel information
+                                fout << pixel.x << "," << pixel.y << ";";
+
+                                // add rgb lightness information
+                                fout << rgb[0] << "," << rgb[1] << "," << rgb[2] << ";";
+
+                                // add encountered bounces
+                                for(unsigned k = 0; k < pbounces.size(); k++){
+                                    fout << pbounces.at(k).x << "," << pbounces.at(k).y << "," << pbounces.at(k).z << ";";
+                                }
+
+                                fout << std::endl;
+
+                                fout.close();
+                            }
+                        }
 
                         //////////////////////////
                         // End PrISE-3D Updates //
