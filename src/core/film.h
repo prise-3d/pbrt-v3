@@ -126,7 +126,7 @@ class Film {
     
     struct PixelMoN {
 
-        PixelMoN(unsigned _k = 9) { 
+        PixelMoN(unsigned _k = PbrtOptions.monk) { 
 
             xyz[0] = xyz[1] = xyz[2] = 0;
             k = _k;

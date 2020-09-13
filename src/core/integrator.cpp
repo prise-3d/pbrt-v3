@@ -237,9 +237,11 @@ void SamplerIntegrator::Render(const Scene &scene) {
     //////////////////////
 
     // check if necessary to use DL module
-    if (PbrtOptions.nn_path.length() > 0) {
-        PbrtOptions.useOfDLModel = true;
-    }
+    // if (PbrtOptions.nn_path.length() > 0) {
+    //     PbrtOptions.useOfDLModel = true;
+    // }
+
+    std::cout << "Use of MoN with (k = " << PbrtOptions.monk << ")" << std::endl;
 
     srand(time(0));
     uint64_t seed = 0;

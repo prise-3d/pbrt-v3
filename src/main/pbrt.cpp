@@ -166,16 +166,6 @@ int main(int argc, char *argv[]) {
                  usage("missing value after --independent argument");
             options.independent = bool(atoi(argv[++i]));
         } 
-        else if (!strcmp(argv[i], "--normals") || !strcmp(argv[i], "-normals")) {
-             if (i + 1 == argc)
-                 usage("missing value after --normals argument");
-            options.normals = bool(atoi(argv[++i]));
-        } 
-        else if (!strcmp(argv[i], "--zbuffer") || !strcmp(argv[i], "-zbuffer")) {
-             if (i + 1 == argc)
-                 usage("missing value after --zbuffer argument");
-            options.zbuffer = bool(atoi(argv[++i]));
-        }
         else if (!strcmp(argv[i], "--load") || !strcmp(argv[i], "-load")) {
              if (i + 1 == argc)
                  usage("missing value after --load argument");
@@ -185,10 +175,10 @@ int main(int argc, char *argv[]) {
                 return 0;
             }
         }
-        else if (!strcmp(argv[i], "--nn_path") || !strcmp(argv[i], "-nn_path")) {
+        else if (!strcmp(argv[i], "--monk") || !strcmp(argv[i], "-monk")) {
              if (i + 1 == argc)
-                 usage("missing value after --nn_path argument");
-            options.nn_path = argv[++i];
+                 usage("missing value after --monk argument");
+            options.monk = atoi(argv[++i]);
 
         }
         //////////////////////////
