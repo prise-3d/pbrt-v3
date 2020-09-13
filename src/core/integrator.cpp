@@ -379,18 +379,18 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                         // always update buffer and normals information for first image and first sample
                         // if ((PbrtOptions.zbuffer || PbrtOptions.normals) && i == startImagesIndex){
-                        if (i == startImagesIndex && j == 1) {
-                            // only if current pixel is in output image
-                            // resolution
-                            if ((pixel.x > 0 &&  pixel.x < fullResolution.x) &&  (pixel.y > 0 && pixel.y < fullResolution.y)) {
-                                // get intersection information
-                                std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
-                                scene.Intersect(ray, isect.get());
+                        // if (i == startImagesIndex && j == 1) {
+                        //     // only if current pixel is in output image
+                        //     // resolution
+                        //     if ((pixel.x > 0 &&  pixel.x < fullResolution.x) &&  (pixel.y > 0 && pixel.y < fullResolution.y)) {
+                        //         // get intersection information
+                        //         std::unique_ptr<SurfaceInteraction> isect(new SurfaceInteraction());
+                        //         scene.Intersect(ray, isect.get());
 
-                                // update zbuffer and normals data
-                                camera->film->UpdateAdditionals(pixel, ray);
-                            }
-                        }
+                        //         // update zbuffer and normals data
+                        //         camera->film->UpdateAdditionals(pixel, ray);
+                        //     }
+                        // }
 
                         //////////////////////////
                         // End PrISE-3D Updates //
@@ -418,12 +418,12 @@ void SamplerIntegrator::Render(const Scene &scene) {
                 // Apply denoising model on the whole image
                 // even if call of this method is at each every samples,
                 // it's more convenient for merging with DL
-                if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0) {
-                    // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
-                    // merge using DL denoising autoencoder
-                    // need pointer (std::mode will remove the unique ptr)
-                    camera->film->ApplyDL();
-                }
+                // if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0) {
+                //     // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
+                //     // merge using DL denoising autoencoder
+                //     // need pointer (std::mode will remove the unique ptr)
+                //     camera->film->ApplyDL();
+                // }
                 //////////////////////////
                 // End PrISE-3D Updates //
                 //////////////////////////
@@ -438,10 +438,10 @@ void SamplerIntegrator::Render(const Scene &scene) {
             camera->film->Clear();
         }
 
-        // kill python nn process
-        if (PbrtOptions.useOfDLModel){
-            camera->film->child_process->writeEOF();
-        }
+        // // kill python nn process
+        // if (PbrtOptions.useOfDLModel){
+        //     camera->film->child_process->writeEOF();
+        // }
 
         reporter.Done();
     }
