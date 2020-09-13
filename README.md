@@ -56,7 +56,7 @@ cd build
 - `--startindex`: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
 - `--independent`: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
 - `--digit`: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
-- `monk`: number `k` clusters to use for Median of meanNs
+- `--monk`: number `k` clusters to use for Median of meanNs
 
 **Output information:**
 
