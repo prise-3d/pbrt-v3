@@ -56,9 +56,8 @@ cd build
 - `--startindex`: specific image index to start with (if necessary to relaunch pbrt) and to not erase previously generated image
 - `--independent`: boolean which specifies if each generated image are independent or image convergence is used (samples merge at each new image generated)
 - `--digit`: number of digits used when saving image index (if 5, index in filename is equal to `00001`)
-- `--normals`: boolean which specifies if normals map is saved after generating first image
-- `--zbuffer`: boolean which specifies if Z-Buffer is saved after generating first image
-- `--nn_model`: neural network model python script path if use of adaptive sampling.
+- `--raytracking`: folder name where to save the ray path found.
+- `--llimit`: max expected lightness limit to take care or not of rays path (if more than limit, ray path is saved).
 
 **Output information:**
 

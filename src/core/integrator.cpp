@@ -241,9 +241,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
     //////////////////////
 
     // check if necessary to use DL module
-    if (PbrtOptions.nn_path.length() > 0) {
-        PbrtOptions.useOfDLModel = true;
-    }
+    // if (PbrtOptions.nn_path.length() > 0) {
+    //     PbrtOptions.useOfDLModel = true;
+    // }
 
     if (PbrtOptions.rayTracking.length() > 0){
         mkdir(PbrtOptions.rayTracking.c_str(), 0775);
@@ -458,12 +458,12 @@ void SamplerIntegrator::Render(const Scene &scene) {
                 // Apply denoising model on the whole image
                 // even if call of this method is at each every samples,
                 // it's more convenient for merging with DL
-                if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0) {
-                    // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
-                    // merge using DL denoising autoencoder
-                    // need pointer (std::mode will remove the unique ptr)
-                    camera->film->ApplyDL();
-                }
+                // if (PbrtOptions.useOfDLModel && j % PbrtOptions.runDLEvery == 0) {
+                //     // std::cout << "Use of model for " << tileBounds << " at sample " << j << std::endl;
+                //     // merge using DL denoising autoencoder
+                //     // need pointer (std::mode will remove the unique ptr)
+                //     camera->film->ApplyDL();
+                // }
                 //////////////////////////
                 // End PrISE-3D Updates //
                 //////////////////////////
@@ -479,9 +479,9 @@ void SamplerIntegrator::Render(const Scene &scene) {
         }
 
         // kill python nn process
-        if (PbrtOptions.useOfDLModel){
-            camera->film->child_process->writeEOF();
-        }
+        // if (PbrtOptions.useOfDLModel){
+        //     camera->film->child_process->writeEOF();
+        // }
 
         reporter.Done();
     }

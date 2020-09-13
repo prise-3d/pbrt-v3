@@ -71,28 +71,28 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
-    zbuffer = std::unique_ptr<Float[]>(new Float[croppedPixelBounds.Area()]);
-    normals = std::unique_ptr<Normal3f[]>(new Normal3f[croppedPixelBounds.Area()]); 
+    // zbuffer = std::unique_ptr<Float[]>(new Float[croppedPixelBounds.Area()]);
+    // normals = std::unique_ptr<Normal3f[]>(new Normal3f[croppedPixelBounds.Area()]); 
 
-    for (int i = 0; i < croppedPixelBounds.Area(); ++i){
-        zbuffer[i] = 0; // default value
-    }
+    // for (int i = 0; i < croppedPixelBounds.Area(); ++i){
+    //     zbuffer[i] = 0; // default value
+    // }
 
-    // initialize child process
-    if (PbrtOptions.nn_path.length() > 0){
-        char *const argv[] = {
-            const_cast<char*>("python"),
-            const_cast<char*>(PbrtOptions.nn_path.c_str()),
-            NULL
-        };
+    // // initialize child process
+    // if (PbrtOptions.nn_path.length() > 0){
+    //     char *const argv[] = {
+    //         const_cast<char*>("python"),
+    //         const_cast<char*>(PbrtOptions.nn_path.c_str()),
+    //         NULL
+    //     };
 
-        child_process = std::unique_ptr<ChildProcess>(
-                    new ChildProcess(
-                        std::string("python"),
-                        argv
-                        )
-                    );
-    }
+    //     child_process = std::unique_ptr<ChildProcess>(
+    //                 new ChildProcess(
+    //                     std::string("python"),
+    //                     argv
+    //                     )
+    //                 );
+    // }
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -258,264 +258,264 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 //////////////////////
 // PrISE-3D Updates //
 //////////////////////
-Float Film::getMaxZBuffer(){
+// Float Film::getMaxZBuffer(){
 
-    // TODO : To improve...
-    Float maxZBuffer = 0;
+//     // TODO : To improve...
+//     Float maxZBuffer = 0;
 
-    for (int i = 0; i < croppedPixelBounds.Area(); i++){
-        if (zbuffer[i] > maxZBuffer && zbuffer[i] != Infinity){
-            maxZBuffer = Float(zbuffer[i]);
-        }
-    }
+//     for (int i = 0; i < croppedPixelBounds.Area(); i++){
+//         if (zbuffer[i] > maxZBuffer && zbuffer[i] != Infinity){
+//             maxZBuffer = Float(zbuffer[i]);
+//         }
+//     }
 
-    return maxZBuffer;
-};
+//     return maxZBuffer;
+// };
 
 
-void Film::ApplyDL() {
+// void Film::ApplyDL() {
 
-    VLOG(1) << "Apply DL and merge film on tiles using " << PbrtOptions.DLConfidence << "%";
-    std::lock_guard<std::mutex> lock(mutex);
+//     VLOG(1) << "Apply DL and merge film on tiles using " << PbrtOptions.DLConfidence << "%";
+//     std::lock_guard<std::mutex> lock(mutex);
 
-    // build model input
-    // expected (1, 7, 32, 32)
-    // 1. mean pixel values [preprocessing: log + normalization ((x_i - min_Log(X))/(max_Log(X) - min_Log(X)))]
-    // 2. normals values [preprocessing: normalization ((x_i + 1) * 0.5)]
-    // 3. zbuffer values [preprocessing: normalization (x_i / max(X)) ]
+//     // build model input
+//     // expected (1, 7, 32, 32)
+//     // 1. mean pixel values [preprocessing: log + normalization ((x_i - min_Log(X))/(max_Log(X) - min_Log(X)))]
+//     // 2. normals values [preprocessing: normalization ((x_i + 1) * 0.5)]
+//     // 3. zbuffer values [preprocessing: normalization (x_i / max(X)) ]
 
-    // check tile size
-    int nChannels = 7;
-    int hSize = 32;
-    int wSize = 32;
-    int nChannelValues = hSize * wSize;
-    unsigned nValues = nChannels * nChannelValues;
+//     // check tile size
+//     int nChannels = 7;
+//     int hSize = 32;
+//     int wSize = 32;
+//     int nChannelValues = hSize * wSize;
+//     unsigned nValues = nChannels * nChannelValues;
 
-    // store image width
-    unsigned imageWidth = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-    unsigned imageHeight = croppedPixelBounds.pMax.y - croppedPixelBounds.pMin.y;
-    unsigned totalNChannelValues = imageWidth * imageHeight;
+//     // store image width
+//     unsigned imageWidth = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+//     unsigned imageHeight = croppedPixelBounds.pMax.y - croppedPixelBounds.pMin.y;
+//     unsigned totalNChannelValues = imageWidth * imageHeight;
 
-    // the whole image buffer
-    std::unique_ptr<Float[]> rgbLogBased(new Float[3 * croppedPixelBounds.Area()]);
+//     // the whole image buffer
+//     std::unique_ptr<Float[]> rgbLogBased(new Float[3 * croppedPixelBounds.Area()]);
 
-    // get Max Z buffer information data
-    Float maxZBuffer = getMaxZBuffer();
-    Float splatScale = 1.; // by default
+//     // get Max Z buffer information data
+//     Float maxZBuffer = getMaxZBuffer();
+//     Float splatScale = 1.; // by default
 
-    unsigned nWeightTiles = ceil(fullResolution.x / (float)wSize); 
-    unsigned nHeightTiles = ceil(fullResolution.y / (float)hSize);
+//     unsigned nWeightTiles = ceil(fullResolution.x / (float)wSize); 
+//     unsigned nHeightTiles = ceil(fullResolution.y / (float)hSize);
 
-    float minLogRGB = 0.;  
-    float maxLogRGB = std::numeric_limits<double>::min(); // max log value of whole film image
+//     float minLogRGB = 0.;  
+//     float maxLogRGB = std::numeric_limits<double>::min(); // max log value of whole film image
 
-    // convert each pixel of film into rgb log based value
-    int offset = 0;
+//     // convert each pixel of film into rgb log based value
+//     int offset = 0;
 
    
-    //ParallelFor2D([&](Point2i p) { 
-    for (Point2i p : croppedPixelBounds) {
-        // Convert pixel XYZ color to RGB
-        Pixel &pixel = GetPixel(p);
+//     //ParallelFor2D([&](Point2i p) { 
+//     for (Point2i p : croppedPixelBounds) {
+//         // Convert pixel XYZ color to RGB
+//         Pixel &pixel = GetPixel(p);
 
-        // int offset = (p.x - croppedPixelBounds.pMin.x) + (p.y - croppedPixelBounds.pMin.y) * imageWidth;
+//         // int offset = (p.x - croppedPixelBounds.pMin.x) + (p.y - croppedPixelBounds.pMin.y) * imageWidth;
 
-        Float rgb[3];
-        XYZToRGB(pixel.xyz, rgb);
+//         Float rgb[3];
+//         XYZToRGB(pixel.xyz, rgb);
 
-        // Normalize pixel with weight sum
-        Float filterWeightSum = pixel.filterWeightSum;
-        if (filterWeightSum != 0) {
-            Float invWt = (Float)1 / filterWeightSum;
-            rgbLogBased[offset] = std::max((Float)0, rgb[0] * invWt);
-            rgbLogBased[offset + 1 * totalNChannelValues] = std::max((Float)0, rgb[1] * invWt);
-            rgbLogBased[offset + 2 * totalNChannelValues] = std::max((Float)0, rgb[2] * invWt);
-        }
+//         // Normalize pixel with weight sum
+//         Float filterWeightSum = pixel.filterWeightSum;
+//         if (filterWeightSum != 0) {
+//             Float invWt = (Float)1 / filterWeightSum;
+//             rgbLogBased[offset] = std::max((Float)0, rgb[0] * invWt);
+//             rgbLogBased[offset + 1 * totalNChannelValues] = std::max((Float)0, rgb[1] * invWt);
+//             rgbLogBased[offset + 2 * totalNChannelValues] = std::max((Float)0, rgb[2] * invWt);
+//         }
 
-        // Add splat value at pixel
-        Float splatRGB[3];
-        Float splatXYZ[3] = {pixel.splatXYZ[0], pixel.splatXYZ[1],
-                            pixel.splatXYZ[2]};
-        XYZToRGB(splatXYZ, splatRGB);
+//         // Add splat value at pixel
+//         Float splatRGB[3];
+//         Float splatXYZ[3] = {pixel.splatXYZ[0], pixel.splatXYZ[1],
+//                             pixel.splatXYZ[2]};
+//         XYZToRGB(splatXYZ, splatRGB);
 
-        rgbLogBased[offset] += splatScale * splatRGB[0];
-        rgbLogBased[offset + 1 * totalNChannelValues] += splatScale * splatRGB[1];
-        rgbLogBased[offset + 2 * totalNChannelValues] += splatScale * splatRGB[2];
+//         rgbLogBased[offset] += splatScale * splatRGB[0];
+//         rgbLogBased[offset + 1 * totalNChannelValues] += splatScale * splatRGB[1];
+//         rgbLogBased[offset + 2 * totalNChannelValues] += splatScale * splatRGB[2];
 
-        // Scale pixel value by _scale_
-        rgbLogBased[offset] *= scale;
-        rgbLogBased[offset + 1 * totalNChannelValues] *= scale;
-        rgbLogBased[offset + 2 * totalNChannelValues] *= scale;
+//         // Scale pixel value by _scale_
+//         rgbLogBased[offset] *= scale;
+//         rgbLogBased[offset + 1 * totalNChannelValues] *= scale;
+//         rgbLogBased[offset + 2 * totalNChannelValues] *= scale;
 
-        // apply log on it (avoid negative values and -inf issue)
-        // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
-        for (int i = 0; i < 3; i++){
-            rgbLogBased[offset + i * totalNChannelValues] = (Float)(log10(rgbLogBased[offset + i * totalNChannelValues] + 1));
+//         // apply log on it (avoid negative values and -inf issue)
+//         // TODO : use of log(x_i + 1) or adding epsilon to x_i ?
+//         for (int i = 0; i < 3; i++){
+//             rgbLogBased[offset + i * totalNChannelValues] = (Float)(log10(rgbLogBased[offset + i * totalNChannelValues] + 1));
 
-            // get max log based value
-            if (rgbLogBased[offset + i * totalNChannelValues] > maxLogRGB)
-                maxLogRGB = rgbLogBased[offset + i * totalNChannelValues];
-        }
+//             // get max log based value
+//             if (rgbLogBased[offset + i * totalNChannelValues] > maxLogRGB)
+//                 maxLogRGB = rgbLogBased[offset + i * totalNChannelValues];
+//         }
 
-        ++offset;
-    }//, croppedPixelBounds);
+//         ++offset;
+//     }//, croppedPixelBounds);
 
-    // update reporter base on tile denoising process
-    ProgressReporter denoising(nHeightTiles * nWeightTiles, "NN Denoising");
-    {   
-        // for each tile found
-        for (int j = 0; j < nHeightTiles; j++){
-            for (int i = 0; i < nWeightTiles; i++){
+//     // update reporter base on tile denoising process
+//     ProgressReporter denoising(nHeightTiles * nWeightTiles, "NN Denoising");
+//     {   
+//         // for each tile found
+//         for (int j = 0; j < nHeightTiles; j++){
+//             for (int i = 0; i < nWeightTiles; i++){
 
-                unsigned wStart = i * wSize;
-                unsigned hStart = j * hSize;
+//                 unsigned wStart = i * wSize;
+//                 unsigned hStart = j * hSize;
 
-                unsigned finalWStart = wStart;
-                unsigned finalHStart = hStart;
+//                 unsigned finalWStart = wStart;
+//                 unsigned finalHStart = hStart;
 
-                unsigned wEnd = wStart + wSize;
-                unsigned hEnd = hStart + hSize;
+//                 unsigned wEnd = wStart + wSize;
+//                 unsigned hEnd = hStart + hSize;
 
-                // check and avoid out of bounds
-                if (hEnd >= fullResolution.y && wEnd >= fullResolution.x){
+//                 // check and avoid out of bounds
+//                 if (hEnd >= fullResolution.y && wEnd >= fullResolution.x){
 
-                    finalWStart = fullResolution.x - wSize;
-                    finalHStart = fullResolution.y - hSize;
-                } else if (hEnd >= fullResolution.y){
+//                     finalWStart = fullResolution.x - wSize;
+//                     finalHStart = fullResolution.y - hSize;
+//                 } else if (hEnd >= fullResolution.y){
 
-                    finalWStart = wStart;
-                    finalHStart = fullResolution.y - hSize;
-                }else if (wEnd >= fullResolution.x){
+//                     finalWStart = wStart;
+//                     finalHStart = fullResolution.y - hSize;
+//                 }else if (wEnd >= fullResolution.x){
                     
-                    finalWStart = fullResolution.x - wSize;
-                    finalHStart = hStart;
-                }
+//                     finalWStart = fullResolution.x - wSize;
+//                     finalHStart = hStart;
+//                 }
                 
-                // final valid tile end for each axis
-                wEnd = finalWStart + wSize;
-                hEnd = finalHStart + hSize;
+//                 // final valid tile end for each axis
+//                 wEnd = finalWStart + wSize;
+//                 hEnd = finalHStart + hSize;
 
-                // construct tile bounds based on this
-                Bounds2i tileBounds(Point2i(finalWStart, finalHStart), Point2i(wEnd, hEnd));
+//                 // construct tile bounds based on this
+//                 Bounds2i tileBounds(Point2i(finalWStart, finalHStart), Point2i(wEnd, hEnd));
 
-                // prepare input values
-                std::vector<float> inputValues(nValues);
+//                 // prepare input values
+//                 std::vector<float> inputValues(nValues);
 
-                int pixelCounter = 0;
+//                 int pixelCounter = 0;
 
-                // extract input model data
-                for (Point2i pixel : tileBounds) {
+//                 // extract input model data
+//                 for (Point2i pixel : tileBounds) {
 
-                    // Merge _pixel_ into _Film::pixels_
-                    Normal3f &normal = GetNormalPoint(pixel);
-                    Float &bufferPoint = GetBufferPoint(pixel);
+//                     // Merge _pixel_ into _Film::pixels_
+//                     Normal3f &normal = GetNormalPoint(pixel);
+//                     Float &bufferPoint = GetBufferPoint(pixel);
 
-                    int offset = (pixel.x - croppedPixelBounds.pMin.x) + (pixel.y - croppedPixelBounds.pMin.y) * imageWidth;
+//                     int offset = (pixel.x - croppedPixelBounds.pMin.x) + (pixel.y - croppedPixelBounds.pMin.y) * imageWidth;
                     
-                    // update and norm log based values
-                    float logDiff = maxLogRGB - minLogRGB;
-                    inputValues.at(pixelCounter) = (float)(rgbLogBased[offset] - minLogRGB) / logDiff;
-                    inputValues.at(pixelCounter + 1 * nChannelValues) = (float)(rgbLogBased[offset + 1 * totalNChannelValues] - minLogRGB) / logDiff;
-                    inputValues.at(pixelCounter + 2 * nChannelValues) = (float)(rgbLogBased[offset + 2 * totalNChannelValues] - minLogRGB) / logDiff;
+//                     // update and norm log based values
+//                     float logDiff = maxLogRGB - minLogRGB;
+//                     inputValues.at(pixelCounter) = (float)(rgbLogBased[offset] - minLogRGB) / logDiff;
+//                     inputValues.at(pixelCounter + 1 * nChannelValues) = (float)(rgbLogBased[offset + 1 * totalNChannelValues] - minLogRGB) / logDiff;
+//                     inputValues.at(pixelCounter + 2 * nChannelValues) = (float)(rgbLogBased[offset + 2 * totalNChannelValues] - minLogRGB) / logDiff;
                     
-                    // fill normal values and normalize
-                    inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
-                    inputValues.at(pixelCounter + 4 * nChannelValues) = (float)((normal.y + 1) * 0.5);
-                    inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
+//                     // fill normal values and normalize
+//                     inputValues.at(pixelCounter + 3 * nChannelValues) = (float)((normal.x + 1) * 0.5);
+//                     inputValues.at(pixelCounter + 4 * nChannelValues) = (float)((normal.y + 1) * 0.5);
+//                     inputValues.at(pixelCounter + 5 * nChannelValues) = (float)((normal.z + 1) * 0.5);
 
-                    // fill zBuffer value
-                    // normalize zBuffer value
-                    if (bufferPoint != Infinity)
-                        inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint / maxZBuffer);
-                    else
-                        inputValues.at(pixelCounter + 6 * nChannelValues) = 1.;
+//                     // fill zBuffer value
+//                     // normalize zBuffer value
+//                     if (bufferPoint != Infinity)
+//                         inputValues.at(pixelCounter + 6 * nChannelValues) = (float)(bufferPoint / maxZBuffer);
+//                     else
+//                         inputValues.at(pixelCounter + 6 * nChannelValues) = 1.;
 
-                    pixelCounter++;
-                }
+//                     pixelCounter++;
+//                 }
 
-                // Send data to model !
-                child_process->write_n_float32(&inputValues[0], nValues);
+//                 // Send data to model !
+//                 child_process->write_n_float32(&inputValues[0], nValues);
 
-                unsigned status = 0;
-                unsigned nOutputValues = nChannelValues * 3;
+//                 unsigned status = 0;
+//                 unsigned nOutputValues = nChannelValues * 3;
 
-                std::vector<float> output_array(nOutputValues);
+//                 std::vector<float> output_array(nOutputValues);
 
-                // Read
-                int code = child_process->read_n_float32(&output_array[0], nOutputValues);
-                if (code) {
-                    std::cerr << "film.cpp: Error when reading float array" << std::endl;
-                }
+//                 // Read
+//                 int code = child_process->read_n_float32(&output_array[0], nOutputValues);
+//                 if (code) {
+//                     std::cerr << "film.cpp: Error when reading float array" << std::endl;
+//                 }
 
-                // Check magic characters
-                char c0 = child_process->read_char();
-                char c1 = child_process->read_char();
-                if (c0 == 'x' && c1 == '\n') {
-                    status = 0;
-                } else {
-                    std::cerr << "film.cpp: magic characters don't match: ["<< c0 <<"] ["<< c1 <<"]" << std::endl;
-                    status = 1;
-                }
+//                 // Check magic characters
+//                 char c0 = child_process->read_char();
+//                 char c1 = child_process->read_char();
+//                 if (c0 == 'x' && c1 == '\n') {
+//                     status = 0;
+//                 } else {
+//                     std::cerr << "film.cpp: magic characters don't match: ["<< c0 <<"] ["<< c1 <<"]" << std::endl;
+//                     status = 1;
+//                 }
 
 
-                pixelCounter = 0;
+//                 pixelCounter = 0;
 
-                // denormalize (normalization * maxLog + exp) output model data
-                // extract input model data
-                for (Point2i pixel : tileBounds) {
+//                 // denormalize (normalization * maxLog + exp) output model data
+//                 // extract input model data
+//                 for (Point2i pixel : tileBounds) {
 
-                    // Merge _pixel_ into _Film::pixels_
-                    Pixel &mergePixel = GetPixel(pixel);
+//                     // Merge _pixel_ into _Film::pixels_
+//                     Pixel &mergePixel = GetPixel(pixel);
 
-                    Float rgbValues[3];
+//                     Float rgbValues[3];
 
-                    Float splatRGB[3];
-                    Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
-                                    mergePixel.splatXYZ[1], 
-                                    mergePixel.splatXYZ[2]};
-                    XYZToRGB(splatXYZ, splatRGB);
+//                     Float splatRGB[3];
+//                     Float splatXYZ[3] = {mergePixel.splatXYZ[0], 
+//                                     mergePixel.splatXYZ[1], 
+//                                     mergePixel.splatXYZ[2]};
+//                     XYZToRGB(splatXYZ, splatRGB);
 
-                    for (int i = 0; i < 3; ++i){
+//                     for (int i = 0; i < 3; ++i){
                         
-                        // reverse normalization
-                        // y = x_i * (max(X) - min(X)) + min(X)
-                        rgbValues[i] = output_array.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
+//                         // reverse normalization
+//                         // y = x_i * (max(X) - min(X)) + min(X)
+//                         rgbValues[i] = output_array.at(pixelCounter + i * nChannelValues) * (maxLogRGB - minLogRGB) + minLogRGB;
                         
-                        // reverse log10 function (and remove 1 which was added to log function previously)
-                        rgbValues[i] = pow(10, rgbValues[i]) - 1;
+//                         // reverse log10 function (and remove 1 which was added to log function previously)
+//                         rgbValues[i] = pow(10, rgbValues[i]) - 1;
 
-                        // reverse scale
-                        // Scale pixel value by _scale_
-                        rgbValues[i] /= scale;
+//                         // reverse scale
+//                         // Scale pixel value by _scale_
+//                         rgbValues[i] /= scale;
 
-                        // reverse splat scale
-                        rgbValues[i] -= splatScale * splatRGB[i];
+//                         // reverse splat scale
+//                         rgbValues[i] -= splatScale * splatRGB[i];
 
-                        // rescale based on sum weight contribution
-                        rgbValues[i] *= mergePixel.filterWeightSum;
-                    }
+//                         // rescale based on sum weight contribution
+//                         rgbValues[i] *= mergePixel.filterWeightSum;
+//                     }
 
-                    // convert to XYZ
-                    Float xyzValues[3];
-                    RGBToXYZ(rgbValues, xyzValues);
+//                     // convert to XYZ
+//                     Float xyzValues[3];
+//                     RGBToXYZ(rgbValues, xyzValues);
 
-                    // merge final values using weighted sum
-                    // affects model data with percent of confidence
-                    for (int i = 0; i < 3; ++i){
-                        mergePixel.xyz[i] =  mergePixel.xyz[i] * (1. - PbrtOptions.DLConfidence) + xyzValues[i] * PbrtOptions.DLConfidence;
-                    }
+//                     // merge final values using weighted sum
+//                     // affects model data with percent of confidence
+//                     for (int i = 0; i < 3; ++i){
+//                         mergePixel.xyz[i] =  mergePixel.xyz[i] * (1. - PbrtOptions.DLConfidence) + xyzValues[i] * PbrtOptions.DLConfidence;
+//                     }
                     
-                    pixelCounter++;
-                }
+//                     pixelCounter++;
+//                 }
             
-            denoising.Update();
+//             denoising.Update();
             
-            }
-        }
-    }
+//             }
+//         }
+//     }
 
-    denoising.Done();
-}
+//     denoising.Done();
+// }
 //////////////////////////
 // End PrISE-3D Updates //
 //////////////////////////
@@ -673,57 +673,57 @@ void Film::WriteImageTemp(int index, Float splatScale) {
     pbrt::WriteImage(temp_filename, &rgb[0], croppedPixelBounds, fullResolution);
 
     // check if necessary to write zbuffer (only at first image)
-    if(PbrtOptions.zbuffer && index == 0){
-        std::string zbuffer_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(PbrtOptions.samples) + "-zbuffer" + filename_postfix;        
+    // if(PbrtOptions.zbuffer && index == 0){
+    //     std::string zbuffer_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(PbrtOptions.samples) + "-zbuffer" + filename_postfix;        
 
-        std::unique_ptr<Float[]> zbufferFloat(new Float[croppedPixelBounds.Area()]);
-        int offset = 0;
+    //     std::unique_ptr<Float[]> zbufferFloat(new Float[croppedPixelBounds.Area()]);
+    //     int offset = 0;
 
-        Float maxValue = Float(0.);
+    //     Float maxValue = Float(0.);
 
-        for (Point2i p : croppedPixelBounds) {
-            // Convert pixel XYZ color to RGB
-            Float &bufferPoint = GetBufferPoint(p);
+    //     for (Point2i p : croppedPixelBounds) {
+    //         // Convert pixel XYZ color to RGB
+    //         Float &bufferPoint = GetBufferPoint(p);
 
-            if (bufferPoint > maxValue && bufferPoint != Infinity){
-                maxValue = Float(bufferPoint);
-            }
+    //         if (bufferPoint > maxValue && bufferPoint != Infinity){
+    //             maxValue = Float(bufferPoint);
+    //         }
 
-            // Scale pixel value by _scale_
-            zbufferFloat[offset] = bufferPoint;
-            ++offset;
-        }
+    //         // Scale pixel value by _scale_
+    //         zbufferFloat[offset] = bufferPoint;
+    //         ++offset;
+    //     }
 
-        // for each Infinity value update value using max current value of zbuffer
-        for(int i = 0; i < croppedPixelBounds.Area(); ++i){
+    //     // for each Infinity value update value using max current value of zbuffer
+    //     for(int i = 0; i < croppedPixelBounds.Area(); ++i){
 
-            if (zbufferFloat[i] == Infinity){
-                zbufferFloat[i] = Float(maxValue);
-            }
-        }
+    //         if (zbufferFloat[i] == Infinity){
+    //             zbufferFloat[i] = Float(maxValue);
+    //         }
+    //     }
 
-        pbrt::WriteImage(zbuffer_filename, &zbufferFloat[0], croppedPixelBounds, fullResolution, 1);
-    }   
+    //     pbrt::WriteImage(zbuffer_filename, &zbufferFloat[0], croppedPixelBounds, fullResolution, 1);
+    // }   
 
-    // check if necessary to write normals (only at first image)
-    if(PbrtOptions.normals && index == 0){
-        std::string normals_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(PbrtOptions.samples) + "-normals" + filename_postfix;
+    // // check if necessary to write normals (only at first image)
+    // if(PbrtOptions.normals && index == 0){
+    //     std::string normals_filename= output_folder + "/" + filename_prefix + "/" + filename_prefix+ "-S" + std::to_string(PbrtOptions.samples) + "-normals" + filename_postfix;
 
-        std::unique_ptr<Float[]> normalsFloat(new Float[3 * croppedPixelBounds.Area()]);
-        int offset = 0;
-        for (Point2i p : croppedPixelBounds) {
-            // Convert pixel XYZ color to RGB
-            Normal3f &normal = GetNormalPoint(p);
+    //     std::unique_ptr<Float[]> normalsFloat(new Float[3 * croppedPixelBounds.Area()]);
+    //     int offset = 0;
+    //     for (Point2i p : croppedPixelBounds) {
+    //         // Convert pixel XYZ color to RGB
+    //         Normal3f &normal = GetNormalPoint(p);
 
-            // Scale pixel value by _scale_
-            normalsFloat[3 * offset] = (normal.x + 1) * 0.5;
-            normalsFloat[3 * offset + 1] = (normal.y + 1) * 0.5;
-            normalsFloat[3 * offset + 2] = (normal.z + 1) * 0.5;
-            ++offset;
-        }
+    //         // Scale pixel value by _scale_
+    //         normalsFloat[3 * offset] = (normal.x + 1) * 0.5;
+    //         normalsFloat[3 * offset + 1] = (normal.y + 1) * 0.5;
+    //         normalsFloat[3 * offset + 2] = (normal.z + 1) * 0.5;
+    //         ++offset;
+    //     }
 
-        pbrt::WriteImage(normals_filename, &normalsFloat[0], croppedPixelBounds, fullResolution);
-    }
+    //     pbrt::WriteImage(normals_filename, &normalsFloat[0], croppedPixelBounds, fullResolution);
+    // }
 
     //////////////////////////
     // End PrISE-3D Updates //

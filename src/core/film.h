@@ -82,7 +82,7 @@ class Film {
     // PrISE-3D Updates //
     //////////////////////
     void ApplyDL();
-    Float getMaxZBuffer();
+    // Float getMaxZBuffer();
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -128,15 +128,15 @@ class Film {
     // PrISE-3D Updates //
     //////////////////////
     // Film public Methods
-    void UpdateAdditionals(const Point2i &p, const Ray &ray) {
-        CHECK(InsideExclusive(p, croppedPixelBounds));
-        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-        int offset = (p.x - croppedPixelBounds.pMin.x) +
-                     (p.y - croppedPixelBounds.pMin.y) * width;
+    // void UpdateAdditionals(const Point2i &p, const Ray &ray) {
+    //     CHECK(InsideExclusive(p, croppedPixelBounds));
+    //     int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+    //     int offset = (p.x - croppedPixelBounds.pMin.x) +
+    //                  (p.y - croppedPixelBounds.pMin.y) * width;
         
-        zbuffer[offset] = ray.tMax;
-        normals[offset] = ray.nn;
-    }
+    //     zbuffer[offset] = ray.tMax;
+    //     normals[offset] = ray.nn;
+    // }
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -160,8 +160,8 @@ class Film {
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
-    std::unique_ptr<Float[]> zbuffer;
-    std::unique_ptr<Normal3f[]> normals;
+    // std::unique_ptr<Float[]> zbuffer;
+    // std::unique_ptr<Normal3f[]> normals;
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
@@ -178,21 +178,21 @@ class Film {
     //////////////////////
     // PrISE-3D Updates //
     //////////////////////
-    Float &GetBufferPoint(const Point2i &p) {
-        CHECK(InsideExclusive(p, croppedPixelBounds));
-        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-        int offset = (p.x - croppedPixelBounds.pMin.x) +
-                     (p.y - croppedPixelBounds.pMin.y) * width;
-        return zbuffer[offset];
-    }
+    // Float &GetBufferPoint(const Point2i &p) {
+    //     CHECK(InsideExclusive(p, croppedPixelBounds));
+    //     int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+    //     int offset = (p.x - croppedPixelBounds.pMin.x) +
+    //                  (p.y - croppedPixelBounds.pMin.y) * width;
+    //     return zbuffer[offset];
+    // }
 
-    Normal3f &GetNormalPoint(const Point2i &p) {
-        CHECK(InsideExclusive(p, croppedPixelBounds));
-        int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
-        int offset = (p.x - croppedPixelBounds.pMin.x) +
-                     (p.y - croppedPixelBounds.pMin.y) * width;
-        return normals[offset];
-    }
+    // Normal3f &GetNormalPoint(const Point2i &p) {
+    //     CHECK(InsideExclusive(p, croppedPixelBounds));
+    //     int width = croppedPixelBounds.pMax.x - croppedPixelBounds.pMin.x;
+    //     int offset = (p.x - croppedPixelBounds.pMin.x) +
+    //                  (p.y - croppedPixelBounds.pMin.y) * width;
+    //     return normals[offset];
+    // }
     //////////////////////////
     // End PrISE-3D Updates //
     //////////////////////////
