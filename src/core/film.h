@@ -63,7 +63,7 @@ namespace pbrt {
 struct FilmTilePixelMoN {
 
     std::vector<Spectrum> values; 
-    // std::vector<Float> weights; // store sum of lightness
+    std::vector<Float> weights; // store sum of lightness
 };
 
 // FilmTilePixel Declarations
@@ -135,12 +135,14 @@ class Film {
             xvalues = std::vector<Float>(k);
             yvalues = std::vector<Float>(k);
             zvalues = std::vector<Float>(k);
+            weightsSum = std::vector<Float>(k);
 
             counters = std::vector<unsigned>(k);
         }
 
         AtomicFloat splatXYZ[3];
-        // Float filterWeightSum;
+        Float filterWeightSum;  // store final weight sum values after estimating
+        Float xyz[3]; // store final xyz values after estimating
 
         unsigned k; // number of means clusters
         unsigned index; // keep track of index used
@@ -150,21 +152,31 @@ class Film {
         std::vector<Float> zvalues; // store sum of b lightness
 
         std::vector<unsigned> counters; // number of elements
-        Float xyz[3]; // filnal xyz values
+        std::vector<Float> weightsSum; // number of elements
+
 
         void estimateRGB() {
 
             Float fxyz[3];
 
-            xyz[0] = estimate(xvalues);
-            xyz[1] = estimate(yvalues);
-            xyz[2] = estimate(zvalues);
+            auto xestimation = estimate(xvalues);
+            xyz[0] = xestimation.first;
+
+            auto yestimation = estimate(yvalues);
+            xyz[1] = yestimation.first; 
+
+            auto zestimation = estimate(zvalues);
+            xyz[2] = zestimation.first;
+
+            // computed filter weight sum based on each channel
+            filterWeightSum = (xestimation.second + yestimation.second + zestimation.second) / 3.;
 
             // std::cout << xyz[0] << " " << xyz[1] << " " << xyz[2] << std::endl;
         }
 
-        Float estimate(std::vector<Float> cvalues) const{
-
+        std::pair<Float, Float> estimate(std::vector<Float> cvalues) const{
+            
+            // TODO : find associated weightsum index and use it
             std::vector<Float> means;
 
             unsigned nElements = cvalues.size();
@@ -173,30 +185,51 @@ class Film {
                 means.push_back(cvalues[i] / counters[i]);
             }
 
-            std::sort(means.begin(), means.end()); 
+            // Vector to store element 
+            // with respective present index 
+            std::vector<std::pair<Float, unsigned> > vp; 
+        
+            // Inserting element in pair vector 
+            // to keep track of previous indexes 
+            for (unsigned i = 0; i < nElements; i++) { 
+                vp.push_back(std::make_pair(means[i], i)); 
+            } 
 
+            std::sort(vp.begin(), vp.end()); 
+
+            Float weight, mean;
             // compute median from means
             if (nElements % 2 == 1){
-                return means[int(nElements/2)];
+                unsigned unsortedIndex = vp[int(nElements/2)].second;
+
+                Float weight = weightsSum[unsortedIndex];
+                Float mean = means[unsortedIndex];
             }
             else{
                 int k_mean = int(nElements/2);
-                return (means[k_mean - 1] + means[k_mean]) / 2;
+                unsigned firstIndex = vp[k_mean - 1].second;
+                unsigned secondIndex = vp[k_mean].second;
+
+                weight = (weightsSum[firstIndex] + weightsSum[secondIndex]) / 2;
+                Float mean = (means[firstIndex] + means[secondIndex]) / 2;
             }
+
+            return std::make_pair(mean, weight);
         }
 
-        void add(Spectrum sample){
+        void add(Spectrum sample, Float weight){
             
             // let into XYZ
             Float xyz[3];
             sample.ToXYZ(xyz);
-
 
             if (xvalues.size() < k){
 
                 xvalues.push_back(xyz[0]);
                 yvalues.push_back(xyz[1]);
                 zvalues.push_back(xyz[2]);
+
+                weightsSum.push_back(weight);
                 
                 counters.push_back(1);
             }
@@ -204,6 +237,8 @@ class Film {
                 xvalues.at(index) += xyz[0];
                 yvalues.at(index) += xyz[1];
                 zvalues.at(index) += xyz[2];
+
+                weightsSum.at(index) += weight;
 
                 counters.at(index) += 1;
             }
@@ -285,57 +320,52 @@ class FilmTile {
             L *= maxSampleLuminance / L.y();
         // Compute sample's raster bounds
         Point2f pFilmDiscrete = pFilm - Vector2f(0.5f, 0.5f);
-        // Point2i p0 = (Point2i)Ceil(pFilmDiscrete - filterRadius);
-        // Point2i p1 =
-        //     (Point2i)Floor(pFilmDiscrete + filterRadius) + Point2i(1, 1);
-        // p0 = Max(p0, pixelBounds.pMin);
-        // p1 = Min(p1, pixelBounds.pMax);
+        Point2i p0 = (Point2i)Ceil(pFilmDiscrete - filterRadius);
+        Point2i p1 =
+            (Point2i)Floor(pFilmDiscrete + filterRadius) + Point2i(1, 1);
+        p0 = Max(p0, pixelBounds.pMin);
+        p1 = Min(p1, pixelBounds.pMax);
 
         // Loop over filter support and add sample to pixel arrays
 
         // Precompute $x$ and $y$ filter table offsets
-        // int *ifx = ALLOCA(int, p1.x - p0.x);
-        // for (int x = p0.x; x < p1.x; ++x) {
-        //     Float fx = std::abs((x - pFilmDiscrete.x) * invFilterRadius.x *
-        //                         filterTableSize);
-        //     ifx[x - p0.x] = std::min((int)std::floor(fx), filterTableSize - 1);
-        // }
-        // int *ify = ALLOCA(int, p1.y - p0.y);
-        // for (int y = p0.y; y < p1.y; ++y) {
-        //     Float fy = std::abs((y - pFilmDiscrete.y) * invFilterRadius.y *
-        //                         filterTableSize);
-        //     ify[y - p0.y] = std::min((int)std::floor(fy), filterTableSize - 1);
-        // }
+        int *ifx = ALLOCA(int, p1.x - p0.x);
+        for (int x = p0.x; x < p1.x; ++x) {
+            Float fx = std::abs((x - pFilmDiscrete.x) * invFilterRadius.x *
+                                filterTableSize);
+            ifx[x - p0.x] = std::min((int)std::floor(fx), filterTableSize - 1);
+        }
+        int *ify = ALLOCA(int, p1.y - p0.y);
+        for (int y = p0.y; y < p1.y; ++y) {
+            Float fy = std::abs((y - pFilmDiscrete.y) * invFilterRadius.y *
+                                filterTableSize);
+            ify[y - p0.y] = std::min((int)std::floor(fy), filterTableSize - 1);
+        }
 
         // std::cout << "pFilm : " << pFilm << std::endl;
         // std::cout << "pFilmDiscrete : " << pFilmDiscrete << std::endl;
         // std::cout << "p0 : " << p0 << std::endl;
         // std::cout << "p1 : " << p1 << std::endl;
 
-        // for (int y = p0.y; y < p1.y; ++y) {
-        //     for (int x = p0.x; x < p1.x; ++x) {
-        //         // Evaluate filter value at $(x,y)$ pixel
-        //         int offset = ify[y - p0.y] * filterTableSize + ifx[x - p0.x];
-        //         Float filterWeight = filterTable[offset];
+        for (int y = p0.y; y < p1.y; ++y) {
+            for (int x = p0.x; x < p1.x; ++x) {
+                // Evaluate filter value at $(x,y)$ pixel
+                int offset = ify[y - p0.y] * filterTableSize + ifx[x - p0.x];
+                Float filterWeight = filterTable[offset];
 
                 // Update pixel values with filtered sample contribution
                 // FilmTilePixel &pixel = GetPixel(Point2i(x, y));
                 // pixel.contribSum += L * sampleWeight * filterWeight;
                 // pixel.filterWeightSum += filterWeight;
 
-                //pixel.add(L * sampleWeight * filterWeight, filterWeight); // TODO : check if use of weight
-                // TODO add directly to merge tile
+                // pixel.add(L * sampleWeight * filterWeight, filterWeight); // TODO : check if use of weight
 
-        Point2i currentPixel = Point2i((int)pFilmDiscrete.x, (int)pFilmDiscrete.y);
 
-        // ensure pixel
-        currentPixel = Max(currentPixel, pixelBounds.pMin);
-        currentPixel = Min(currentPixel, pixelBounds.pMax);
-
-        FilmTilePixelMoN &pixel = GetPixel(currentPixel);
-        pixel.values.push_back(L * sampleWeight);
-        //     }
-        // }
+                FilmTilePixelMoN &pixel = GetPixel(Point2i(x, y));
+                pixel.values.push_back(L * sampleWeight * filterWeight);
+                pixel.weights.push_back(filterWeight);
+            }
+        }
     }
     FilmTilePixelMoN &GetPixel(const Point2i &p) {
         CHECK(InsideExclusive(p, pixelBounds));

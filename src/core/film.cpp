@@ -230,7 +230,7 @@ void Film::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
         //mergePixel.filterWeightSum += tilePixel.filterWeightSum;
         
         for (unsigned i = 0; i < tilePixel.values.size(); i++)
-            mergePixel.add(tilePixel.values[i]);
+            mergePixel.add(tilePixel.values[i], tilePixel.weights[i]);
     }
 }
 
@@ -342,15 +342,15 @@ void Film::WriteImageTemp(int index, Float splatScale) {
         XYZToRGB(pixel.xyz, &rgb[3 * offset]);
 
         // Normalize pixel with weight sum
-        // Float filterWeightSum = pixel.filterWeightSum;
-        // if (filterWeightSum != 0) {
-        //     Float invWt = (Float)1 / filterWeightSum;
-        //     rgb[3 * offset] = std::max((Float)0, rgb[3 * offset] * invWt);
-        //     rgb[3 * offset + 1] =
-        //         std::max((Float)0, rgb[3 * offset + 1] * invWt);
-        //     rgb[3 * offset + 2] =
-        //         std::max((Float)0, rgb[3 * offset + 2] * invWt);
-        // }
+        Float filterWeightSum = pixel.filterWeightSum;
+        if (filterWeightSum != 0) {
+            Float invWt = (Float)1 / filterWeightSum;
+            rgb[3 * offset] = std::max((Float)0, rgb[3 * offset] * invWt);
+            rgb[3 * offset + 1] =
+                std::max((Float)0, rgb[3 * offset + 1] * invWt);
+            rgb[3 * offset + 2] =
+                std::max((Float)0, rgb[3 * offset + 2] * invWt);
+        }
 
         // Add splat value at pixel
         Float splatRGB[3];
