@@ -207,7 +207,7 @@ void Film::Clear() {
         PixelMoN &pixel = GetPixel(p);
         for (int c = 0; c < 3; ++c)
             pixel.splatXYZ[c] = pixel.xyz[c] = 0;
-        // pixel.filterWeightSum = 0;
+            pixel.filterWeightSum = 0;
     }
 }
 
@@ -335,12 +335,13 @@ void Film::WriteImageTemp(int index, Float splatScale) {
         // Convert pixel XYZ color to RGB
         PixelMoN &pixel = GetPixel(p);
 
-        // TODO : here estimate values (understand why RGB => XYZ et XYZ => RGB)
+        // estimating XYZ values and filter weights
         pixel.estimateRGB();
 
         // XYZToRGB(pixel.xyz, &rgb[3 * offset]);
         XYZToRGB(pixel.xyz, &rgb[3 * offset]);
 
+        // std::cout << pixel.filterWeightSum << std::endl;
         // Normalize pixel with weight sum
         Float filterWeightSum = pixel.filterWeightSum;
         if (filterWeightSum != 0) {

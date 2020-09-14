@@ -132,16 +132,16 @@ class Film {
             k = _k;
             index = 0;
 
-            xvalues = std::vector<Float>(k);
-            yvalues = std::vector<Float>(k);
-            zvalues = std::vector<Float>(k);
-            weightsSum = std::vector<Float>(k);
+            xvalues = std::vector<Float>();
+            yvalues = std::vector<Float>();
+            zvalues = std::vector<Float>();
+            weightsSum = std::vector<Float>();
 
-            counters = std::vector<unsigned>(k);
+            counters = std::vector<unsigned>();
         }
 
         AtomicFloat splatXYZ[3];
-        Float filterWeightSum;  // store final weight sum values after estimating
+        Float filterWeightSum = 0;  // store final weight sum values after estimating
         Float xyz[3]; // store final xyz values after estimating
 
         unsigned k; // number of means clusters
@@ -168,6 +168,7 @@ class Film {
             auto zestimation = estimate(zvalues);
             xyz[2] = zestimation.first;
 
+            std::cout << xestimation.second << " " << yestimation.second << " " << zestimation.second << std::endl;
             // computed filter weight sum based on each channel
             filterWeightSum = (xestimation.second + yestimation.second + zestimation.second) / 3.;
 
@@ -193,17 +194,17 @@ class Film {
             // to keep track of previous indexes 
             for (unsigned i = 0; i < nElements; i++) { 
                 vp.push_back(std::make_pair(means[i], i)); 
-            } 
+            }
 
-            std::sort(vp.begin(), vp.end()); 
+            std::sort(vp.begin(), vp.end());
 
             Float weight, mean;
             // compute median from means
             if (nElements % 2 == 1){
                 unsigned unsortedIndex = vp[int(nElements/2)].second;
 
-                Float weight = weightsSum[unsortedIndex];
-                Float mean = means[unsortedIndex];
+                weight = weightsSum[unsortedIndex];
+                mean = means[unsortedIndex];
             }
             else{
                 int k_mean = int(nElements/2);
@@ -211,7 +212,7 @@ class Film {
                 unsigned secondIndex = vp[k_mean].second;
 
                 weight = (weightsSum[firstIndex] + weightsSum[secondIndex]) / 2;
-                Float mean = (means[firstIndex] + means[secondIndex]) / 2;
+                mean = (means[firstIndex] + means[secondIndex]) / 2;
             }
 
             return std::make_pair(mean, weight);
@@ -352,6 +353,8 @@ class FilmTile {
                 // Evaluate filter value at $(x,y)$ pixel
                 int offset = ify[y - p0.y] * filterTableSize + ifx[x - p0.x];
                 Float filterWeight = filterTable[offset];
+
+                // std::cout << "Filter weight for (" << x << ", " << y << ") => " << filterWeight << std::endl;
 
                 // Update pixel values with filtered sample contribution
                 // FilmTilePixel &pixel = GetPixel(Point2i(x, y));
