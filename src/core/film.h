@@ -137,7 +137,7 @@ class Film {
             zvalues = std::vector<Float>();
             weightsSum = std::vector<Float>();
 
-            counters = std::vector<unsigned>();
+            // counters = std::vector<unsigned>();
         }
 
         AtomicFloat splatXYZ[3];
@@ -151,7 +151,7 @@ class Film {
         std::vector<Float> yvalues; // store sum of g lightness
         std::vector<Float> zvalues; // store sum of b lightness
 
-        std::vector<unsigned> counters; // number of elements
+        // std::vector<unsigned> counters; // number of elements
         std::vector<Float> weightsSum; // number of elements
 
 
@@ -168,7 +168,7 @@ class Film {
             auto zestimation = estimate(zvalues);
             xyz[2] = zestimation.first;
 
-            std::cout << xestimation.second << " " << yestimation.second << " " << zestimation.second << std::endl;
+            // std::cout << xestimation.second << " " << yestimation.second << " " << zestimation.second << std::endl;
             // computed filter weight sum based on each channel
             filterWeightSum = (xestimation.second + yestimation.second + zestimation.second) / 3.;
 
@@ -183,7 +183,8 @@ class Film {
             unsigned nElements = cvalues.size();
 
             for (unsigned i = 0; i < nElements; i++){
-                means.push_back(cvalues[i] / counters[i]);
+                // remove dividing by counters as we use filterweightsum later
+                means.push_back(cvalues[i]);
             }
 
             // Vector to store element 
@@ -232,7 +233,7 @@ class Film {
 
                 weightsSum.push_back(weight);
                 
-                counters.push_back(1);
+                // counters.push_back(1);
             }
             else{
                 xvalues.at(index) += xyz[0];
@@ -241,7 +242,7 @@ class Film {
 
                 weightsSum.at(index) += weight;
 
-                counters.at(index) += 1;
+                // counters.at(index) += 1;
             }
 
             // std::cout << "Counters => ";
