@@ -94,13 +94,15 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         if (bounces == 0 || specularBounce) {
             // Add emitted light at path vertex or from the environment
             if (foundIntersection) {
-                L += beta * isect.Le(-ray.d);
-                currentL += beta * isect.Le(-ray.d);
+                Spectrum LeLightness = beta * isect.Le(-ray.d);
+                L += LeLightness;
+                currentL += LeLightness;
                 VLOG(2) << "Added Le -> L = " << L;
             } else {
                 for (const auto &light : scene.infiniteLights) {
-                    L += beta * light->Le(ray);
-                    currentL += beta * light->Le(ray);
+                    Spectrum LeLightness = beta * light->Le(ray);
+                    L += LeLightness;
+                    currentL += LeLightness;
                 }
                 VLOG(2) << "Added infinite area lights -> L = " << L;
             }
@@ -167,10 +169,10 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
             beta *= S / pdf;
 
             // Account for the direct subsurface scattering component
-            L += beta * UniformSampleOneLight(pi, scene, arena, sampler, false,
+            Spectrum LeSampleOneLight = beta * UniformSampleOneLight(pi, scene, arena, sampler, false,
                                               lightDistribution->Lookup(pi.p));
-            currentL += beta * UniformSampleOneLight(pi, scene, arena, sampler, false,
-                                              lightDistribution->Lookup(pi.p));
+            L += LeSampleOneLight;
+            currentL += LeSampleOneLight;
 
             // Account for the indirect subsurface scattering component
             Spectrum f = pi.bsdf->Sample_f(pi.wo, &wi, sampler.Get2D(), &pdf,
@@ -194,7 +196,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
 
 
         // TODO : here add spectrum information of L or currentL ? 
-        lightness.push_back(L);
+        lightness.push_back(currentL);
 
         // P3D updates
         // add here point3f found
