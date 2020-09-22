@@ -345,10 +345,12 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         Spectrum L(0.f);
 
                         // P3D updates
+                        Point3f rayOrigin = ray.o;
                         std::vector<Point3f> pbounces;
+                        std::vector<Spectrum> lightness;
 
                         //if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena);
-                        if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena, pbounces);
+                        if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena, pbounces, lightness);
 
                         // Issue warning if unexpected radiance value
                         // returned
@@ -418,12 +420,18 @@ void SamplerIntegrator::Render(const Scene &scene) {
                                 // add pixel information
                                 fout << pixel.x << "," << pixel.y << ";";
 
+                                fout << rayOrigin.x << "," << rayOrigin.y << "," << rayOrigin.z << ";";
+
                                 // add rgb lightness information
                                 fout << rgb[0] << "," << rgb[1] << "," << rgb[2] << ";";
 
                                 // add encountered bounces
                                 for(unsigned k = 0; k < pbounces.size(); k++){
-                                    fout << pbounces.at(k).x << "," << pbounces.at(k).y << "," << pbounces.at(k).z << ";";
+
+                                    Float currentRgb[3];
+                                    lightness.at(k).ToRGB(currentRgb);
+                                    fout << pbounces.at(k).x << "," << pbounces.at(k).y << "," << pbounces.at(k).z << ",";
+                                    fout << currentRgb[0] << "," << currentRgb[1] << "," << currentRgb[2] << ";";
                                 }
 
                                 fout << std::endl;

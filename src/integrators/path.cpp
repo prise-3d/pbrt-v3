@@ -62,7 +62,7 @@ void PathIntegrator::Preprocess(const Scene &scene, Sampler &sampler) {
 }
 
 Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
-                            Sampler &sampler, MemoryArena &arena, std::vector<Point3f> &pbounces,
+                            Sampler &sampler, MemoryArena &arena, std::vector<Point3f> &pbounces, std::vector<Spectrum> &lightness,
                             int depth) const {
     ProfilePhase p(Prof::SamplerIntegratorLi);
     Spectrum L(0.f), beta(1.f);
@@ -86,26 +86,28 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         // Intersect _ray_ with scene and store intersection in _isect_
         SurfaceInteraction isect;
         bool foundIntersection = scene.Intersect(ray, &isect);
+        
+        Spectrum currentL(0.f);
+        Point3f rayDest = ray.p;
 
         // Possibly add emitted light at intersection
         if (bounces == 0 || specularBounce) {
             // Add emitted light at path vertex or from the environment
             if (foundIntersection) {
                 L += beta * isect.Le(-ray.d);
+                currentL += beta * isect.Le(-ray.d);
                 VLOG(2) << "Added Le -> L = " << L;
             } else {
-                for (const auto &light : scene.infiniteLights)
+                for (const auto &light : scene.infiniteLights) {
                     L += beta * light->Le(ray);
+                    currentL += beta * light->Le(ray);
+                }
                 VLOG(2) << "Added infinite area lights -> L = " << L;
             }
         }
 
         // Terminate path if ray escaped or _maxDepth_ was reached
         if (!foundIntersection || bounces >= maxDepth) break;
-
-        // P3D updates
-        // add here point3f found
-        pbounces.push_back(ray.p);
 
         // Compute scattering functions and skip over medium boundaries
         isect.ComputeScatteringFunctions(ray, arena, true);
@@ -129,6 +131,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
             if (Ld.IsBlack()) ++zeroRadiancePaths;
             CHECK_GE(Ld.y(), 0.f);
             L += Ld;
+            currentL += Ld;
         }
 
         // Sample BSDF to get new path direction
@@ -166,6 +169,8 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
             // Account for the direct subsurface scattering component
             L += beta * UniformSampleOneLight(pi, scene, arena, sampler, false,
                                               lightDistribution->Lookup(pi.p));
+            currentL += beta * UniformSampleOneLight(pi, scene, arena, sampler, false,
+                                              lightDistribution->Lookup(pi.p));
 
             // Account for the indirect subsurface scattering component
             Spectrum f = pi.bsdf->Sample_f(pi.wo, &wi, sampler.Get2D(), &pdf,
@@ -186,6 +191,14 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
             beta /= 1 - q;
             DCHECK(!std::isinf(beta.y()));
         }
+
+
+        // TODO : here add spectrum information of L or currentL ? 
+        lightness.push_back(L);
+
+        // P3D updates
+        // add here point3f found
+        pbounces.push_back(rayDest);
     }
     ReportValue(pathLength, bounces);
     return L;

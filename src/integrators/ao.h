@@ -57,7 +57,7 @@ class AOIntegrator : public SamplerIntegrator {
 
     Spectrum Li(const RayDifferential &ray, const Scene &scene,
                     Sampler &sampler, MemoryArena &arena,
-                    std::vector<Point3f> &bounces, int depth = 0) const;
+                    std::vector<Point3f> &bounces, std::vector<Spectrum> &lightness, int depth = 0) const;
 
  private:
     bool cosSample;

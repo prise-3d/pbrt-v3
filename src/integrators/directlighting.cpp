@@ -61,7 +61,7 @@ void DirectLightingIntegrator::Preprocess(const Scene &scene,
 
 Spectrum DirectLightingIntegrator::Li(const RayDifferential &ray, const Scene &scene,
                         Sampler &sampler, MemoryArena &arena,
-                        std::vector<Point3f> &bounces, int depth) const {
+                        std::vector<Point3f> &bounces, std::vector<Spectrum> &lightness, int depth) const {
     return Li(ray, scene, sampler, arena, depth);
 }
 

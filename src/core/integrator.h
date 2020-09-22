@@ -88,7 +88,7 @@ class SamplerIntegrator : public Integrator {
                         int depth = 0) const = 0;
     virtual Spectrum Li(const RayDifferential &ray, const Scene &scene,
                         Sampler &sampler, MemoryArena &arena,
-                        std::vector<Point3f> &bounces, int depth = 0) const = 0;
+                        std::vector<Point3f> &bounces, std::vector<Spectrum> &lightness, int depth = 0) const = 0;
     Spectrum SpecularReflect(const RayDifferential &ray,
                              const SurfaceInteraction &isect,
                              const Scene &scene, Sampler &sampler,
