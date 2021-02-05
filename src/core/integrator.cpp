@@ -407,18 +407,25 @@ void SamplerIntegrator::Render(const Scene &scene) {
                         //     }
                         // }
 
+                        // check use or not of rayWeight
                         if (PbrtOptions.rayTracking.length() > 0){
+
+                            Spectrum LWeight = Spectrum(L);
+                            LWeight *= rayWeight;
 
                             Float rgb[3];
                             L.ToRGB(rgb);
 
-                            if (rgb[0] > PbrtOptions.lightnessLimit || rgb[1] > PbrtOptions.lightnessLimit || rgb[2] > PbrtOptions.lightnessLimit) {
+                            Float rgbWeight[3];
+                            LWeight.ToRGB(rgbWeight);
+
+                            if (rgbWeight[0] > PbrtOptions.lightnessLimit || rgbWeight[1] > PbrtOptions.lightnessLimit || rgbWeight[2] > PbrtOptions.lightnessLimit) {
                                 
                                 // store data into
                                 std::ofstream fout(PbrtOptions.rayTracking + "/ray_data" + std::to_string(tile.x) + "_" + std::to_string(tile.y) + ".csv", std::ios::app);
                                 
                                 // add pixel information
-                                fout << pixel.x << "," << pixel.y << ";";
+                                fout << pixel.x << "," << pixel.y << ";" << rayWeight << ";";
 
                                 fout << rayOrigin.x << "," << rayOrigin.y << "," << rayOrigin.z << ";";
 
@@ -430,6 +437,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                                     Float currentRgb[3];
                                     lightness.at(k).ToRGB(currentRgb);
+                                    
                                     fout << pbounces.at(k).x << "," << pbounces.at(k).y << "," << pbounces.at(k).z << ",";
                                     fout << currentRgb[0] << "," << currentRgb[1] << "," << currentRgb[2] << ";";
                                 }
